@@ -79,11 +79,11 @@
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.6 0.2 25);
+  --primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.6 0.2 25);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --background: oklch(0.12 0.01 280);
   --foreground: oklch(0.85 0.005 65);
   --card: oklch(0.21 0.006 285.885);
   --card-foreground: oklch(0.85 0.005 65);
@@ -174,4 +174,42 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+}
+
+/* War Room specific styles */
+.war-room-gradient {
+  background: linear-gradient(135deg, oklch(0.12 0 0) 0%, oklch(0.12 0.02 280) 50%, oklch(0.12 0 0) 100%);
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(0.145 0 0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.3 0 0);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0 0);
+}
+
+/* Alert pulse animation */
+@keyframes alert-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.alert-pulse {
+  animation: alert-pulse 2s ease-in-out infinite;
 }
