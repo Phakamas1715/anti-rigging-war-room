@@ -15,6 +15,13 @@
       "when": 1769486727917,
       "tag": "0001_daily_reptil",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769488951919,
+      "tag": "0002_motionless_zzzax",
+      "breakpoints": true
     }
   ]
 }

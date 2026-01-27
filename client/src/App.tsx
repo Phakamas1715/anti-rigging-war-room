@@ -15,6 +15,8 @@ import PVTComparison from "./pages/PVTComparison";
 import AdminImport from "./pages/AdminImport";
 import SpatialMap from "./pages/SpatialMap";
 import ExportReport from "./pages/ExportReport";
+import VolunteerApp from "./pages/VolunteerApp";
+import AdminVolunteers from "./pages/AdminVolunteers";
 
 function Router() {
   return (
@@ -30,6 +32,8 @@ function Router() {
       <Route path={"/admin/import"} component={AdminImport} />
       <Route path={"/spatial"} component={SpatialMap} />
       <Route path={"/export"} component={ExportReport} />
+      <Route path={"/volunteer"} component={VolunteerApp} />
+      <Route path={"/admin/volunteers"} component={AdminVolunteers} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

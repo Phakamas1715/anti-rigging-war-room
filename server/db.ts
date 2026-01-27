@@ -7,7 +7,9 @@ import {
   evidence, InsertEvidence, Evidence,
   fraudAlerts, InsertFraudAlert, FraudAlert,
   networkTransactions, InsertNetworkTransaction, NetworkTransaction,
-  dataSnapshots, InsertDataSnapshot, DataSnapshot
+  dataSnapshots, InsertDataSnapshot, DataSnapshot,
+  volunteers, InsertVolunteer, Volunteer,
+  volunteerSubmissions, InsertVolunteerSubmission, VolunteerSubmission
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -249,4 +251,158 @@ export async function getDashboardStats() {
     unresolvedAlerts: unresolvedCount?.count || 0,
     totalEvidence: evidenceCount?.count || 0
   };
+}
+
+// ============ VOLUNTEER QUERIES ============
+export async function createVolunteer(volunteer: InsertVolunteer) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.insert(volunteers).values(volunteer);
+}
+
+export async function getVolunteerByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(volunteers).where(eq(volunteers.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function getVolunteerByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(volunteers).where(eq(volunteers.volunteerCode, code)).limit(1);
+  return result[0];
+}
+
+export async function updateVolunteerStatus(id: number, status: "pending" | "active" | "inactive") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.update(volunteers).set({ status, lastActiveAt: new Date() }).where(eq(volunteers.id, id));
+}
+
+export async function assignVolunteerToStation(volunteerId: number, stationId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.update(volunteers).set({ 
+    stationId, 
+    assignedAt: new Date(),
+    status: "active" 
+  }).where(eq(volunteers.id, volunteerId));
+}
+
+export async function getVolunteers(status?: "pending" | "active" | "inactive") {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (status) {
+    return db.select().from(volunteers).where(eq(volunteers.status, status)).orderBy(desc(volunteers.createdAt));
+  }
+  return db.select().from(volunteers).orderBy(desc(volunteers.createdAt));
+}
+
+export async function getVolunteerStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, active: 0, pending: 0, submissions: 0 };
+  
+  const [totalCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteers);
+  const [activeCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteers).where(eq(volunteers.status, "active"));
+  const [pendingCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteers).where(eq(volunteers.status, "pending"));
+  const [submissionCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteerSubmissions);
+  
+  return {
+    total: totalCount?.count || 0,
+    active: activeCount?.count || 0,
+    pending: pendingCount?.count || 0,
+    submissions: submissionCount?.count || 0
+  };
+}
+
+// ============ VOLUNTEER SUBMISSION QUERIES ============
+export async function createVolunteerSubmission(submission: InsertVolunteerSubmission) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Create submission
+  const result = await db.insert(volunteerSubmissions).values(submission);
+  
+  // Update volunteer submission count
+  await db.update(volunteers)
+    .set({ 
+      submissionCount: sql`${volunteers.submissionCount} + 1`,
+      lastActiveAt: new Date()
+    })
+    .where(eq(volunteers.id, submission.volunteerId));
+  
+  return result;
+}
+
+export async function getVolunteerSubmissions(volunteerId?: number, stationId?: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (volunteerId) {
+    return db.select().from(volunteerSubmissions)
+      .where(eq(volunteerSubmissions.volunteerId, volunteerId))
+      .orderBy(desc(volunteerSubmissions.createdAt))
+      .limit(limit);
+  }
+  if (stationId) {
+    return db.select().from(volunteerSubmissions)
+      .where(eq(volunteerSubmissions.stationId, stationId))
+      .orderBy(desc(volunteerSubmissions.createdAt))
+      .limit(limit);
+  }
+  return db.select().from(volunteerSubmissions).orderBy(desc(volunteerSubmissions.createdAt)).limit(limit);
+}
+
+export async function getPendingSubmissions() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(volunteerSubmissions)
+    .where(eq(volunteerSubmissions.status, "pending"))
+    .orderBy(desc(volunteerSubmissions.createdAt));
+}
+
+export async function verifySubmission(id: number, verifiedBy: number, status: "verified" | "rejected") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.update(volunteerSubmissions).set({ 
+    status, 
+    verifiedBy,
+    verifiedAt: new Date()
+  }).where(eq(volunteerSubmissions.id, id));
+}
+
+export async function getStationSubmissionStatus() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get all stations with their submission status
+  const stations = await db.select().from(pollingStations);
+  const submissions = await db.select().from(volunteerSubmissions);
+  
+  const submissionMap = new Map<number, { count: number; latestStatus: string }>();
+  submissions.forEach(sub => {
+    const existing = submissionMap.get(sub.stationId);
+    if (!existing || sub.createdAt > new Date(0)) {
+      submissionMap.set(sub.stationId, {
+        count: (existing?.count || 0) + 1,
+        latestStatus: sub.status || "pending"
+      });
+    }
+  });
+  
+  return stations.map(station => ({
+    ...station,
+    hasSubmission: submissionMap.has(station.id),
+    submissionCount: submissionMap.get(station.id)?.count || 0,
+    latestStatus: submissionMap.get(station.id)?.latestStatus || null
+  }));
 }

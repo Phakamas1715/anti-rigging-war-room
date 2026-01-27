@@ -10,8 +10,14 @@ import {
   createFraudAlert, getFraudAlerts, getUnresolvedAlerts, resolveAlert,
   createNetworkTransaction, getNetworkTransactions,
   createDataSnapshot, getDataSnapshots,
-  getDashboardStats
+  getDashboardStats,
+  createVolunteer, getVolunteerByUserId, getVolunteerByCode, updateVolunteerStatus,
+  assignVolunteerToStation, getVolunteers, getVolunteerStats,
+  createVolunteerSubmission, getVolunteerSubmissions, getPendingSubmissions,
+  verifySubmission, getStationSubmissionStatus
 } from "./db";
+import { storagePut } from "./storage";
+import { nanoid } from "nanoid";
 import crypto from "crypto";
 
 // ============ KLIMEK MODEL ANALYSIS ============
@@ -783,6 +789,202 @@ export const appRouter = router({
         legalDisclaimer: `รายงานฉบับนี้จัดทำขึ้นโดยใช้วิธีการทางสถิติและนิติวิทยาศาสตร์การเลือกตั้ง (Election Forensics) ตามมาตรฐานสากล ผลการวิเคราะห์เป็นหลักฐานทางสถิติที่สามารถใช้ประกอบการพิจารณาทางกฎหมายได้`,
       };
     }),
+  }),
+
+  // ============ VOLUNTEER MOBILE APP ============
+  volunteer: router({
+    // Register as volunteer
+    register: protectedProcedure
+      .input(z.object({
+        phone: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new Error("Not authenticated");
+        
+        // Check if already registered
+        const existing = await getVolunteerByUserId(ctx.user.id);
+        if (existing) {
+          return { success: true, volunteer: existing, message: "ลงทะเบียนแล้ว" };
+        }
+        
+        // Generate unique volunteer code
+        const volunteerCode = `VOL-${nanoid(8).toUpperCase()}`;
+        
+        await createVolunteer({
+          userId: ctx.user.id,
+          volunteerCode,
+          phone: input.phone,
+          status: "pending",
+        });
+        
+        const volunteer = await getVolunteerByUserId(ctx.user.id);
+        return { success: true, volunteer, message: "ลงทะเบียนสำเร็จ รอการอนุมัติ" };
+      }),
+      
+    // Get current volunteer status
+    me: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) return null;
+      return getVolunteerByUserId(ctx.user.id);
+    }),
+    
+    // Get assigned station info
+    myStation: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) return null;
+      const volunteer = await getVolunteerByUserId(ctx.user.id);
+      if (!volunteer?.stationId) return null;
+      
+      const stations = await getPollingStations();
+      return stations.find(s => s.id === volunteer.stationId) || null;
+    }),
+    
+    // Get my submissions
+    mySubmissions: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) return [];
+      const volunteer = await getVolunteerByUserId(ctx.user.id);
+      if (!volunteer) return [];
+      return getVolunteerSubmissions(volunteer.id);
+    }),
+    
+    // Submit vote count with photo
+    submit: protectedProcedure
+      .input(z.object({
+        stationId: z.number(),
+        photoBase64: z.string().optional(),
+        photoMimeType: z.string().optional(),
+        totalVoters: z.number(),
+        validVotes: z.number(),
+        invalidVotes: z.number(),
+        candidateAVotes: z.number(),
+        candidateBVotes: z.number(),
+        latitude: z.string().optional(),
+        longitude: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new Error("Not authenticated");
+        
+        const volunteer = await getVolunteerByUserId(ctx.user.id);
+        if (!volunteer) throw new Error("ไม่พบข้อมูลอาสาสมัคร");
+        if (volunteer.status !== "active") throw new Error("สถานะอาสาสมัครยังไม่ได้รับการอนุมัติ");
+        
+        let photoUrl = undefined;
+        let photoKey = undefined;
+        
+        // Upload photo if provided
+        if (input.photoBase64 && input.photoMimeType) {
+          const buffer = Buffer.from(input.photoBase64, 'base64');
+          const ext = input.photoMimeType.split('/')[1] || 'jpg';
+          const fileKey = `submissions/${volunteer.id}/${Date.now()}-${nanoid(8)}.${ext}`;
+          
+          const uploadResult = await storagePut(fileKey, buffer, input.photoMimeType);
+          photoUrl = uploadResult.url;
+          photoKey = uploadResult.key;
+        }
+        
+        // Create submission
+        await createVolunteerSubmission({
+          volunteerId: volunteer.id,
+          stationId: input.stationId,
+          photoUrl,
+          photoKey,
+          totalVoters: input.totalVoters,
+          validVotes: input.validVotes,
+          invalidVotes: input.invalidVotes,
+          candidateAVotes: input.candidateAVotes,
+          candidateBVotes: input.candidateBVotes,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          notes: input.notes,
+        });
+        
+        // Also create election data for PVT comparison
+        const station = await getPollingStationByCode(
+          (await getPollingStations()).find(s => s.id === input.stationId)?.stationCode || ""
+        );
+        
+        if (station) {
+          const turnout = input.totalVoters > 0 ? (input.validVotes + input.invalidVotes) / input.totalVoters : 0;
+          const candidateAShare = input.validVotes > 0 ? input.candidateAVotes / input.validVotes : 0;
+          
+          await createElectionData({
+            stationId: input.stationId,
+            electionDate: new Date(),
+            totalVoters: input.totalVoters,
+            validVotes: input.validVotes,
+            invalidVotes: input.invalidVotes,
+            candidateAVotes: input.candidateAVotes,
+            candidateBVotes: input.candidateBVotes,
+            source: "pvt",
+            turnout: turnout.toString(),
+            candidateAShare: candidateAShare.toString(),
+          });
+        }
+        
+        return { success: true, message: "ส่งข้อมูลสำเร็จ" };
+      }),
+      
+    // Get available stations for assignment
+    availableStations: publicProcedure.query(async () => {
+      return getPollingStations();
+    }),
+    
+    // Get station submission status (for coverage map)
+    stationStatus: publicProcedure.query(async () => {
+      return getStationSubmissionStatus();
+    }),
+    
+    // Get volunteer stats
+    stats: publicProcedure.query(async () => {
+      return getVolunteerStats();
+    }),
+  }),
+  
+  // ============ ADMIN VOLUNTEER MANAGEMENT ============
+  adminVolunteer: router({
+    // List all volunteers
+    list: protectedProcedure
+      .input(z.object({
+        status: z.enum(["pending", "active", "inactive"]).optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getVolunteers(input?.status);
+      }),
+      
+    // Approve volunteer
+    approve: protectedProcedure
+      .input(z.object({
+        volunteerId: z.number(),
+        stationId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        await assignVolunteerToStation(input.volunteerId, input.stationId);
+        return { success: true, message: "อนุมัติอาสาสมัครและมอบหมายหน่วยเลือกตั้งแล้ว" };
+      }),
+      
+    // Deactivate volunteer
+    deactivate: protectedProcedure
+      .input(z.object({ volunteerId: z.number() }))
+      .mutation(async ({ input }) => {
+        await updateVolunteerStatus(input.volunteerId, "inactive");
+        return { success: true, message: "ยกเลิกสิทธิ์อาสาสมัครแล้ว" };
+      }),
+      
+    // Get pending submissions for verification
+    pendingSubmissions: protectedProcedure.query(async () => {
+      return getPendingSubmissions();
+    }),
+    
+    // Verify submission
+    verifySubmission: protectedProcedure
+      .input(z.object({
+        submissionId: z.number(),
+        status: z.enum(["verified", "rejected"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new Error("Not authenticated");
+        await verifySubmission(input.submissionId, ctx.user.id, input.status);
+        return { success: true, message: input.status === "verified" ? "ยืนยันข้อมูลแล้ว" : "ปฏิเสธข้อมูลแล้ว" };
+      }),
   }),
 
   // ============ SPATIAL MAP ============

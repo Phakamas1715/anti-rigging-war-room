@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   Upload,
   FileText,
-  Map
+  Map,
+  Users,
+  Smartphone
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -199,6 +201,40 @@ export default function Dashboard() {
               </Link>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Volunteer Tools */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Link href="/volunteer">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-green-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-500/10 rounded-lg">
+                    <Smartphone className="h-8 w-8 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">Mobile App อาสาสมัคร</h3>
+                    <p className="text-sm text-slate-400">ถ่ายรูปและส่งผลคะแนนแบบ Real-time</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/volunteers">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-blue-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-lg">
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">จัดการอาสาสมัคร</h3>
+                    <p className="text-sm text-slate-400">อนุมัติและตรวจสอบรายงาน</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Admin Tools */}

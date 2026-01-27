@@ -139,3 +139,50 @@ export const dataSnapshots = mysqlTable("data_snapshots", {
 
 export type DataSnapshot = typeof dataSnapshots.$inferSelect;
 export type InsertDataSnapshot = typeof dataSnapshots.$inferInsert;
+
+/**
+ * Volunteers table - for tracking volunteer assignments and submissions
+ */
+export const volunteers = mysqlTable("volunteers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  stationId: int("stationId"),
+  volunteerCode: varchar("volunteerCode", { length: 32 }).notNull().unique(),
+  phone: varchar("phone", { length: 20 }),
+  status: mysqlEnum("status", ["pending", "active", "inactive"]).default("pending"),
+  assignedAt: timestamp("assignedAt"),
+  lastActiveAt: timestamp("lastActiveAt"),
+  submissionCount: int("submissionCount").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Volunteer = typeof volunteers.$inferSelect;
+export type InsertVolunteer = typeof volunteers.$inferInsert;
+
+/**
+ * Volunteer submissions table - for tracking PVT data submissions
+ */
+export const volunteerSubmissions = mysqlTable("volunteer_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  volunteerId: int("volunteerId").notNull(),
+  stationId: int("stationId").notNull(),
+  photoUrl: varchar("photoUrl", { length: 512 }),
+  photoKey: varchar("photoKey", { length: 256 }),
+  totalVoters: int("totalVoters").default(0),
+  validVotes: int("validVotes").default(0),
+  invalidVotes: int("invalidVotes").default(0),
+  candidateAVotes: int("candidateAVotes").default(0),
+  candidateBVotes: int("candidateBVotes").default(0),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["pending", "verified", "rejected"]).default("pending"),
+  verifiedBy: int("verifiedBy"),
+  verifiedAt: timestamp("verifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VolunteerSubmission = typeof volunteerSubmissions.$inferSelect;
+export type InsertVolunteerSubmission = typeof volunteerSubmissions.$inferInsert;

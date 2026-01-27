@@ -65,3 +65,37 @@
 - [x] Color-coded Z-Score indicators
 - [x] Interactive map with tooltips
 - [x] Neighbor comparison visualization
+
+## New Features - Phase 3: Mobile App for Volunteers
+
+### Volunteer Registration & Auth
+- [x] Volunteer registration page
+- [x] Volunteer login system
+- [x] Assign volunteer to polling station
+- [x] Volunteer status tracking (active/inactive)
+
+### Mobile Camera & Photo Upload
+- [x] Mobile-friendly camera interface
+- [x] Photo capture with timestamp
+- [x] Photo preview before upload
+- [x] Upload to S3 with progress indicator
+- [x] Automatic GPS location tagging
+
+### Vote Data Entry
+- [x] Mobile form for entering vote counts
+- [x] Candidate selection interface
+- [x] Vote count input with validation
+- [x] Summary before submission
+- [ ] Offline mode with sync
+
+### Real-time PVT Integration
+- [x] Submit data to PVT system
+- [x] Real-time comparison with official results
+- [x] Alert when discrepancy detected
+- [x] Station submission status dashboard
+
+### Volunteer Dashboard
+- [x] List of assigned stations
+- [x] Submission history
+- [ ] Station coverage map
+- [x] Progress statistics
