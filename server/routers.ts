@@ -14,7 +14,8 @@ import {
   createVolunteer, getVolunteerByUserId, getVolunteerByCode, updateVolunteerStatus,
   assignVolunteerToStation, getVolunteers, getVolunteerStats,
   createVolunteerSubmission, getVolunteerSubmissions, getPendingSubmissions,
-  verifySubmission, getStationSubmissionStatus
+  verifySubmission, getStationSubmissionStatus,
+  createCrowdsourcedResult, getCrowdsourcedResults, getOfficialResults
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
@@ -1437,6 +1438,237 @@ export const appRouter = router({
           });
         }
         return results;
+      }),
+  }),
+
+  // ============ BATCH OCR TO PVT ============
+  batchPvt: router({
+    // Bulk submit OCR results to PVT
+    bulkSubmit: protectedProcedure
+      .input(z.object({
+        results: z.array(z.object({
+          fileId: z.string(),
+          stationCode: z.string(),
+          totalVoters: z.number(),
+          totalBallots: z.number(),
+          spoiledBallots: z.number(),
+          votes: z.array(z.object({
+            candidateNumber: z.number(),
+            candidateName: z.string(),
+            voteCount: z.number(),
+          })),
+          imageUrl: z.string().optional(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        const submitted: { fileId: string; stationCode: string; success: boolean; error?: string }[] = [];
+        
+        for (const result of input.results) {
+          try {
+            // Find station by code
+            const stations = await getPollingStations();
+            const station = stations.find(s => s.stationCode === result.stationCode);
+            
+            if (!station) {
+              submitted.push({
+                fileId: result.fileId,
+                stationCode: result.stationCode,
+                success: false,
+                error: `ไม่พบหน่วยเลือกตั้ง ${result.stationCode}`,
+              });
+              continue;
+            }
+            
+            // Calculate vote totals
+            const candidateAVotes = result.votes[0]?.voteCount || 0;
+            const candidateBVotes = result.votes[1]?.voteCount || 0;
+            const validVotes = result.totalBallots - result.spoiledBallots;
+            const turnout = result.totalVoters > 0 ? result.totalBallots / result.totalVoters : 0;
+            const candidateAShare = validVotes > 0 ? candidateAVotes / validVotes : 0;
+            
+            // Create crowdsourced result
+            await createCrowdsourcedResult({
+              stationId: station.id,
+              volunteerId: null,
+              totalVoters: result.totalVoters,
+              validVotes,
+              invalidVotes: result.spoiledBallots,
+              candidateAVotes,
+              candidateBVotes,
+              photoUrl: result.imageUrl || null,
+              submittedAt: new Date(),
+              status: "verified",
+            });
+            
+            // Also create election data entry
+            await createElectionData({
+              stationId: station.id,
+              electionDate: new Date(),
+              totalVoters: result.totalVoters,
+              validVotes,
+              invalidVotes: result.spoiledBallots,
+              candidateAVotes,
+              candidateBVotes,
+              source: "crowdsourced",
+              turnout: turnout.toString(),
+              candidateAShare: candidateAShare.toString(),
+            });
+            
+            submitted.push({
+              fileId: result.fileId,
+              stationCode: result.stationCode,
+              success: true,
+            });
+          } catch (error: any) {
+            submitted.push({
+              fileId: result.fileId,
+              stationCode: result.stationCode,
+              success: false,
+              error: error.message || 'Failed to submit',
+            });
+          }
+        }
+        
+        const successCount = submitted.filter(s => s.success).length;
+        const failedCount = submitted.filter(s => !s.success).length;
+        
+        return {
+          submitted,
+          summary: {
+            total: input.results.length,
+            success: successCount,
+            failed: failedCount,
+          },
+        };
+      }),
+
+    // Submit single OCR result to PVT
+    submitSingle: protectedProcedure
+      .input(z.object({
+        fileId: z.string(),
+        stationCode: z.string(),
+        totalVoters: z.number(),
+        totalBallots: z.number(),
+        spoiledBallots: z.number(),
+        votes: z.array(z.object({
+          candidateNumber: z.number(),
+          candidateName: z.string(),
+          voteCount: z.number(),
+        })),
+        imageUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const stations = await getPollingStations();
+        const station = stations.find(s => s.stationCode === input.stationCode);
+        
+        if (!station) {
+          return {
+            success: false,
+            error: `ไม่พบหน่วยเลือกตั้ง ${input.stationCode}`,
+          };
+        }
+        
+        const candidateAVotes = input.votes[0]?.voteCount || 0;
+        const candidateBVotes = input.votes[1]?.voteCount || 0;
+        const validVotes = input.totalBallots - input.spoiledBallots;
+        const turnout = input.totalVoters > 0 ? input.totalBallots / input.totalVoters : 0;
+        const candidateAShare = validVotes > 0 ? candidateAVotes / validVotes : 0;
+        
+        await createCrowdsourcedResult({
+          stationId: station.id,
+          volunteerId: null,
+          totalVoters: input.totalVoters,
+          validVotes,
+          invalidVotes: input.spoiledBallots,
+          candidateAVotes,
+          candidateBVotes,
+          photoUrl: input.imageUrl || null,
+          submittedAt: new Date(),
+          status: "verified",
+        });
+        
+        await createElectionData({
+          stationId: station.id,
+          electionDate: new Date(),
+          totalVoters: input.totalVoters,
+          validVotes,
+          invalidVotes: input.spoiledBallots,
+          candidateAVotes,
+          candidateBVotes,
+          source: "crowdsourced",
+          turnout: turnout.toString(),
+          candidateAShare: candidateAShare.toString(),
+        });
+        
+        return {
+          success: true,
+          stationCode: input.stationCode,
+          message: `ส่งข้อมูลหน่วย ${input.stationCode} เข้าระบบ PVT สำเร็จ`,
+        };
+      }),
+
+    // Check PVT gap after submission
+    checkGap: protectedProcedure
+      .input(z.object({
+        stationCode: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const stations = await getPollingStations();
+        const station = stations.find(s => s.stationCode === input.stationCode);
+        
+        if (!station) {
+          return { hasGap: false, gap: 0, message: 'Station not found' };
+        }
+        
+        const crowdsourced = await getCrowdsourcedResults(station.id);
+        const official = await getOfficialResults(station.id);
+        
+        if (!crowdsourced || !official) {
+          return { hasGap: false, gap: 0, message: 'No data to compare' };
+        }
+        
+        const gap = Math.abs(
+          (crowdsourced.candidateAVotes || 0) - (official.candidateAVotes || 0)
+        );
+        
+        const hasGap = gap > 10; // More than 10 votes difference is suspicious
+        
+        return {
+          hasGap,
+          gap,
+          ourSum: crowdsourced.candidateAVotes || 0,
+          theirSum: official.candidateAVotes || 0,
+          message: hasGap ? `พบความแตกต่าง ${gap} คะแนน` : 'ข้อมูลตรงกัน',
+        };
+      }),
+
+    // Get submission status for batch results
+    getSubmissionStatus: protectedProcedure
+      .input(z.object({
+        stationCodes: z.array(z.string()),
+      }))
+      .query(async ({ input }) => {
+        const stations = await getPollingStations();
+        const status: { stationCode: string; submitted: boolean; hasGap: boolean }[] = [];
+        
+        for (const code of input.stationCodes) {
+          const station = stations.find(s => s.stationCode === code);
+          if (!station) {
+            status.push({ stationCode: code, submitted: false, hasGap: false });
+            continue;
+          }
+          
+          const crowdsourced = await getCrowdsourcedResults(station.id);
+          const official = await getOfficialResults(station.id);
+          
+          const submitted = !!crowdsourced;
+          const hasGap = submitted && official && 
+            Math.abs((crowdsourced.candidateAVotes || 0) - (official.candidateAVotes || 0)) > 10;
+          
+          status.push({ stationCode: code, submitted, hasGap: !!hasGap });
+        }
+        
+        return status;
       }),
   }),
 });

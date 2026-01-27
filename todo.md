@@ -188,4 +188,30 @@
 - [ ] Edit individual results
 - [x] Export to CSV
 - [ ] Export to Excel
-- [ ] Bulk submit to PVT system
+- [x] Bulk submit to PVT system
+
+## New Features - Phase 7: Auto-submit Batch OCR to PVT
+
+### Auto-submit System
+- [x] Auto-submit toggle in Batch OCR settings
+- [x] Bulk submit all OCR results to PVT
+- [ ] Individual submit for selected results
+- [x] Submission queue with retry logic
+
+### PVT Integration
+- [x] Create crowdsourced results from OCR data
+- [ ] Link OCR image evidence to PVT submission
+- [x] Gap detection after submission
+- [ ] Discord/LINE alert when gap detected
+
+### Submission Status
+- [x] Status indicator for each result (pending/submitted/failed)
+- [ ] Submission history log
+- [x] Re-submit failed items
+- [x] Summary of submitted vs pending
+
+### UI Updates
+- [x] Submit All button in Batch OCR
+- [ ] Submit Selected button
+- [x] Status column in results table
+- [ ] Confirmation dialog before bulk submit

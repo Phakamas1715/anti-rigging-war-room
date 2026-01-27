@@ -406,3 +406,62 @@ export async function getStationSubmissionStatus() {
     latestStatus: submissionMap.get(station.id)?.latestStatus || null
   }));
 }
+
+
+// ============ PVT COMPARISON QUERIES ============
+export async function createCrowdsourcedResult(result: {
+  stationId: number;
+  volunteerId: number | null;
+  totalVoters: number;
+  validVotes: number;
+  invalidVotes: number;
+  candidateAVotes: number;
+  candidateBVotes: number;
+  photoUrl: string | null;
+  submittedAt: Date;
+  status: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Store as volunteer submission with source = "ocr"
+  return db.insert(volunteerSubmissions).values({
+    stationId: result.stationId,
+    volunteerId: result.volunteerId || 0,
+    totalVoters: result.totalVoters,
+    validVotes: result.validVotes,
+    invalidVotes: result.invalidVotes,
+    candidateAVotes: result.candidateAVotes,
+    candidateBVotes: result.candidateBVotes,
+    photoUrl: result.photoUrl,
+    status: result.status as "pending" | "verified" | "rejected",
+  });
+}
+
+export async function getCrowdsourcedResults(stationId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // Get latest verified submission for this station
+  const results = await db.select()
+    .from(volunteerSubmissions)
+    .where(eq(volunteerSubmissions.stationId, stationId))
+    .orderBy(desc(volunteerSubmissions.createdAt))
+    .limit(1);
+  
+  return results[0] || null;
+}
+
+export async function getOfficialResults(stationId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // Get official election data for this station
+  const results = await db.select()
+    .from(electionData)
+    .where(eq(electionData.stationId, stationId))
+    .orderBy(desc(electionData.createdAt))
+    .limit(1);
+  
+  return results[0] || null;
+}

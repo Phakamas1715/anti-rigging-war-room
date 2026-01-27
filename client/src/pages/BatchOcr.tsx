@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { 
   ArrowLeft, 
   Upload, 
@@ -24,6 +25,9 @@ import {
   ImageIcon,
   AlertTriangle,
   Settings,
+  Send,
+  Database,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,6 +39,8 @@ interface FileItem {
   result?: any;
   error?: string;
   processingTime?: number;
+  pvtStatus?: 'pending' | 'submitted' | 'error' | 'gap_detected';
+  pvtError?: string;
 }
 
 export default function BatchOcr() {
@@ -44,11 +50,14 @@ export default function BatchOcr() {
   const [provider, setProvider] = useState<'huggingface' | 'deepseek'>('huggingface');
   const [apiKey, setApiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
+  const [isSubmittingPVT, setIsSubmittingPVT] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
 
   const batchProcessMutation = trpc.ocr.batchProcessSingle.useMutation();
-  const { data: demoResults } = trpc.ocr.batchDemo.useQuery({ count: 5 }, { enabled: false });
+  const bulkSubmitMutation = trpc.batchPvt.bulkSubmit.useMutation();
+  const submitSingleMutation = trpc.batchPvt.submitSingle.useMutation();
 
   // Calculate statistics
   const stats = {
@@ -57,6 +66,8 @@ export default function BatchOcr() {
     processing: files.filter(f => f.status === 'processing').length,
     done: files.filter(f => f.status === 'done').length,
     error: files.filter(f => f.status === 'error').length,
+    pvtSubmitted: files.filter(f => f.pvtStatus === 'submitted').length,
+    pvtGap: files.filter(f => f.pvtStatus === 'gap_detected').length,
   };
 
   const progress = stats.total > 0 ? ((stats.done + stats.error) / stats.total) * 100 : 0;
@@ -69,13 +80,11 @@ export default function BatchOcr() {
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     Array.from(selectedFiles).forEach((file) => {
-      // Validate file type
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         toast.error(`${file.name}: ไฟล์ต้องเป็น JPG, PNG หรือ WebP`);
         return;
       }
 
-      // Validate file size
       if (file.size > maxSize) {
         toast.error(`${file.name}: ไฟล์ต้องมีขนาดไม่เกิน 10MB`);
         return;
@@ -127,13 +136,51 @@ export default function BatchOcr() {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data URL prefix
         const base64 = result.split(',')[1];
         resolve(base64);
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  // Submit single result to PVT
+  const submitToPVT = async (fileItem: FileItem) => {
+    if (!fileItem.result) return;
+
+    try {
+      const result = await submitSingleMutation.mutateAsync({
+        fileId: fileItem.id,
+        stationCode: fileItem.result.stationCode,
+        totalVoters: fileItem.result.totalVoters,
+        totalBallots: fileItem.result.totalBallots,
+        spoiledBallots: fileItem.result.spoiledBallots,
+        votes: fileItem.result.votes.map((v: any) => ({
+          candidateNumber: v.candidateNumber,
+          candidateName: v.candidateName,
+          voteCount: v.voteCount,
+        })),
+      });
+
+      setFiles(prev => prev.map(f => 
+        f.id === fileItem.id ? {
+          ...f,
+          pvtStatus: result.success ? 'submitted' : 'error',
+          pvtError: result.success ? undefined : result.error,
+        } : f
+      ));
+
+      return result.success;
+    } catch (error: any) {
+      setFiles(prev => prev.map(f => 
+        f.id === fileItem.id ? {
+          ...f,
+          pvtStatus: 'error',
+          pvtError: error.message || 'ส่งข้อมูลไม่สำเร็จ',
+        } : f
+      ));
+      return false;
+    }
   };
 
   // Process all files
@@ -153,14 +200,12 @@ export default function BatchOcr() {
     for (const fileItem of pendingFiles) {
       if (abortRef.current) break;
 
-      // Wait if paused
       while (isPaused && !abortRef.current) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       if (abortRef.current) break;
 
-      // Update status to processing
       setFiles(prev => prev.map(f => 
         f.id === fileItem.id ? { ...f, status: 'processing' as const } : f
       ));
@@ -176,15 +221,22 @@ export default function BatchOcr() {
           apiKey,
         });
 
+        const updatedFile = {
+          ...fileItem,
+          status: result.success ? 'done' as const : 'error' as const,
+          result: result.data,
+          error: result.error || undefined,
+          processingTime: result.processingTime,
+        };
+
         setFiles(prev => prev.map(f => 
-          f.id === fileItem.id ? {
-            ...f,
-            status: result.success ? 'done' as const : 'error' as const,
-            result: result.data,
-            error: result.error || undefined,
-            processingTime: result.processingTime,
-          } : f
+          f.id === fileItem.id ? updatedFile : f
         ));
+
+        // Auto-submit to PVT if enabled and OCR successful
+        if (autoSubmitPVT && result.success && result.data) {
+          await submitToPVT(updatedFile);
+        }
       } catch (error: any) {
         setFiles(prev => prev.map(f => 
           f.id === fileItem.id ? {
@@ -198,6 +250,58 @@ export default function BatchOcr() {
 
     setIsProcessing(false);
     toast.success('ประมวลผลเสร็จสิ้น');
+  };
+
+  // Bulk submit all completed results to PVT
+  const bulkSubmitToPVT = async () => {
+    const completedFiles = files.filter(f => f.status === 'done' && f.result && f.pvtStatus !== 'submitted');
+    
+    if (completedFiles.length === 0) {
+      toast.error('ไม่มีข้อมูลสำหรับส่งเข้า PVT');
+      return;
+    }
+
+    setIsSubmittingPVT(true);
+
+    try {
+      const results = completedFiles.map(f => ({
+        fileId: f.id,
+        stationCode: f.result.stationCode,
+        totalVoters: f.result.totalVoters,
+        totalBallots: f.result.totalBallots,
+        spoiledBallots: f.result.spoiledBallots,
+        votes: f.result.votes.map((v: any) => ({
+          candidateNumber: v.candidateNumber,
+          candidateName: v.candidateName,
+          voteCount: v.voteCount,
+        })),
+      }));
+
+      const response = await bulkSubmitMutation.mutateAsync({ results });
+
+      // Update file statuses based on response
+      setFiles(prev => prev.map(f => {
+        const submitted = response.submitted.find(s => s.fileId === f.id);
+        if (submitted) {
+          return {
+            ...f,
+            pvtStatus: submitted.success ? 'submitted' : 'error',
+            pvtError: submitted.error,
+          };
+        }
+        return f;
+      }));
+
+      toast.success(`ส่งข้อมูลเข้า PVT สำเร็จ ${response.summary.success}/${response.summary.total} รายการ`);
+      
+      if (response.summary.failed > 0) {
+        toast.warning(`ล้มเหลว ${response.summary.failed} รายการ`);
+      }
+    } catch (error: any) {
+      toast.error(`เกิดข้อผิดพลาด: ${error.message}`);
+    } finally {
+      setIsSubmittingPVT(false);
+    }
   };
 
   // Pause/Resume processing
@@ -243,6 +347,7 @@ export default function BatchOcr() {
           validation: { isValid: true, warnings: [] },
         },
         processingTime: 1500 + Math.floor(Math.random() * 1000),
+        pvtStatus: 'pending',
       });
     }
     setFiles(demoFiles);
@@ -257,7 +362,7 @@ export default function BatchOcr() {
       return;
     }
 
-    const headers = ['รหัสหน่วย', 'ผู้มีสิทธิ์', 'บัตรทั้งหมด', 'บัตรเสีย', 'ผู้สมัคร 1', 'ผู้สมัคร 2', 'ผู้สมัคร 3'];
+    const headers = ['รหัสหน่วย', 'ผู้มีสิทธิ์', 'บัตรทั้งหมด', 'บัตรเสีย', 'ผู้สมัคร 1', 'ผู้สมัคร 2', 'ผู้สมัคร 3', 'สถานะ PVT'];
     const rows = completedFiles.map(f => {
       const r = f.result;
       return [
@@ -268,6 +373,7 @@ export default function BatchOcr() {
         r.votes?.[0]?.voteCount || 0,
         r.votes?.[1]?.voteCount || 0,
         r.votes?.[2]?.voteCount || 0,
+        f.pvtStatus || 'pending',
       ].join(',');
     });
 
@@ -280,6 +386,40 @@ export default function BatchOcr() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('ส่งออก CSV สำเร็จ');
+  };
+
+  // Get PVT status badge
+  const getPVTStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'submitted':
+        return (
+          <Badge className="bg-green-500/20 text-green-500">
+            <Database className="w-3 h-3 mr-1" />
+            ส่ง PVT แล้ว
+          </Badge>
+        );
+      case 'gap_detected':
+        return (
+          <Badge className="bg-red-500/20 text-red-500">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            พบความแตกต่าง
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge className="bg-red-500/20 text-red-500">
+            <XCircle className="w-3 h-3 mr-1" />
+            ส่งไม่สำเร็จ
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-muted-foreground">
+            <Clock className="w-3 h-3 mr-1" />
+            รอส่ง PVT
+          </Badge>
+        );
+    }
   };
 
   return (
@@ -314,7 +454,7 @@ export default function BatchOcr() {
               </CardTitle>
               <CardDescription>เลือก Provider และใส่ API Key สำหรับ OCR</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek')}>
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
                   <TabsTrigger value="huggingface">Hugging Face</TabsTrigger>
@@ -334,12 +474,29 @@ export default function BatchOcr() {
                   />
                 </div>
               </Tabs>
+
+              {/* Auto-submit to PVT Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 max-w-md">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-submit" className="text-base font-medium">
+                    Auto-submit to PVT
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    ส่งผลลัพธ์เข้าระบบ PVT โดยอัตโนมัติหลัง OCR สำเร็จ
+                  </p>
+                </div>
+                <Switch
+                  id="auto-submit"
+                  checked={autoSubmitPVT}
+                  onCheckedChange={setAutoSubmitPVT}
+                />
+              </div>
             </CardContent>
           </Card>
         )}
 
         {/* Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{stats.total}</div>
@@ -361,13 +518,25 @@ export default function BatchOcr() {
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold text-green-500">{stats.done}</div>
-              <div className="text-sm text-muted-foreground">สำเร็จ</div>
+              <div className="text-sm text-muted-foreground">OCR สำเร็จ</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold text-red-500">{stats.error}</div>
               <div className="text-sm text-muted-foreground">ล้มเหลว</div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/50">
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-primary">{stats.pvtSubmitted}</div>
+              <div className="text-sm text-muted-foreground">ส่ง PVT แล้ว</div>
+            </CardContent>
+          </Card>
+          <Card className="border-destructive/50">
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-destructive">{stats.pvtGap}</div>
+              <div className="text-sm text-muted-foreground">พบ Gap</div>
             </CardContent>
           </Card>
         </div>
@@ -377,7 +546,7 @@ export default function BatchOcr() {
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">ความคืบหน้า</span>
+                <span className="text-sm font-medium">ความคืบหน้า OCR</span>
                 <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-2" />
@@ -399,7 +568,7 @@ export default function BatchOcr() {
             ) : (
               <>
                 <Play className="w-4 h-4 mr-2" />
-                เริ่มประมวลผล
+                เริ่มประมวลผล OCR
               </>
             )}
           </Button>
@@ -430,6 +599,28 @@ export default function BatchOcr() {
             <Button variant="outline" onClick={retryFailed}>
               <RotateCcw className="w-4 h-4 mr-2" />
               ลองใหม่ ({stats.error})
+            </Button>
+          )}
+
+          {/* Bulk Submit to PVT Button */}
+          {stats.done > 0 && (
+            <Button 
+              variant="default"
+              className="bg-primary"
+              onClick={bulkSubmitToPVT}
+              disabled={isSubmittingPVT || stats.done === stats.pvtSubmitted}
+            >
+              {isSubmittingPVT ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  กำลังส่ง PVT...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  ส่งเข้า PVT ({stats.done - stats.pvtSubmitted})
+                </>
+              )}
             </Button>
           )}
 
@@ -504,7 +695,7 @@ export default function BatchOcr() {
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{fileItem.file.name}</p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {fileItem.status === 'pending' && (
                             <Badge variant="outline" className="text-yellow-500">
                               <Clock className="w-3 h-3 mr-1" />
@@ -520,7 +711,7 @@ export default function BatchOcr() {
                           {fileItem.status === 'done' && (
                             <Badge variant="outline" className="text-green-500">
                               <CheckCircle2 className="w-3 h-3 mr-1" />
-                              สำเร็จ
+                              OCR สำเร็จ
                             </Badge>
                           )}
                           {fileItem.status === 'error' && (
@@ -529,6 +720,7 @@ export default function BatchOcr() {
                               ล้มเหลว
                             </Badge>
                           )}
+                          {fileItem.status === 'done' && getPVTStatusBadge(fileItem.pvtStatus)}
                           {fileItem.processingTime && (
                             <span className="text-xs text-muted-foreground">
                               {(fileItem.processingTime / 1000).toFixed(1)}s
@@ -573,17 +765,20 @@ export default function BatchOcr() {
                     <div key={fileItem.id} className="p-3 rounded-lg bg-muted/50 border border-border">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{fileItem.result.stationCode}</span>
-                        {fileItem.result.validation?.isValid ? (
-                          <Badge className="bg-green-500/20 text-green-500">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Valid
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-yellow-500/20 text-yellow-500">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Warning
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {fileItem.result.validation?.isValid ? (
+                            <Badge className="bg-green-500/20 text-green-500">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Valid
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-500/20 text-yellow-500">
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              Warning
+                            </Badge>
+                          )}
+                          {getPVTStatusBadge(fileItem.pvtStatus)}
+                        </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
                         <div>
@@ -610,6 +805,11 @@ export default function BatchOcr() {
                           ))}
                         </div>
                       </div>
+                      {fileItem.pvtError && (
+                        <div className="mt-2 p-2 rounded bg-destructive/10 text-destructive text-xs">
+                          {fileItem.pvtError}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
