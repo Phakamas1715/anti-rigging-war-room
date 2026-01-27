@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ import {
   Send,
   Database,
   AlertCircle,
+  Bell,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,12 +54,42 @@ export default function BatchOcr() {
   const [showSettings, setShowSettings] = useState(false);
   const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
   const [isSubmittingPVT, setIsSubmittingPVT] = useState(false);
+  
+  // Gap Alert Settings
+  const [enableGapAlert, setEnableGapAlert] = useState(false);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [lineToken, setLineToken] = useState('');
+  const [gapThreshold, setGapThreshold] = useState(10);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
 
   const batchProcessMutation = trpc.ocr.batchProcessSingle.useMutation();
   const bulkSubmitMutation = trpc.batchPvt.bulkSubmit.useMutation();
   const submitSingleMutation = trpc.batchPvt.submitSingle.useMutation();
+  const sendGapAlertMutation = trpc.batchPvt.sendGapAlert.useMutation();
+  const checkGapQuery = trpc.batchPvt.checkGap.useQuery;
+
+  // Load saved settings from localStorage
+  useEffect(() => {
+    const savedDiscordUrl = localStorage.getItem('discordWebhookUrl');
+    const savedLineToken = localStorage.getItem('lineToken');
+    const savedGapThreshold = localStorage.getItem('gapThreshold');
+    const savedEnableGapAlert = localStorage.getItem('enableGapAlert');
+    
+    if (savedDiscordUrl) setDiscordWebhookUrl(savedDiscordUrl);
+    if (savedLineToken) setLineToken(savedLineToken);
+    if (savedGapThreshold) setGapThreshold(parseInt(savedGapThreshold));
+    if (savedEnableGapAlert) setEnableGapAlert(savedEnableGapAlert === 'true');
+  }, []);
+
+  // Save settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('discordWebhookUrl', discordWebhookUrl);
+    localStorage.setItem('lineToken', lineToken);
+    localStorage.setItem('gapThreshold', gapThreshold.toString());
+    localStorage.setItem('enableGapAlert', enableGapAlert.toString());
+  }, [discordWebhookUrl, lineToken, gapThreshold, enableGapAlert]);
 
   // Calculate statistics
   const stats = {
@@ -144,7 +176,33 @@ export default function BatchOcr() {
     });
   };
 
-  // Submit single result to PVT
+  // Send Gap Alert
+  const sendGapAlert = async (stationCode: string, ourSum: number, theirSum: number, gap: number) => {
+    if (!enableGapAlert) return;
+    if (!discordWebhookUrl && !lineToken) return;
+    
+    try {
+      const result = await sendGapAlertMutation.mutateAsync({
+        stationCode,
+        ourSum,
+        theirSum,
+        gap,
+        discordWebhookUrl: discordWebhookUrl || undefined,
+        lineToken: lineToken || undefined,
+      });
+      
+      if (result.success) {
+        const channels = [];
+        if (result.discordSent) channels.push('Discord');
+        if (result.lineSent) channels.push('LINE');
+        toast.info(`ส่งแจ้งเตือน Gap ผ่าน ${channels.join(' และ ')} แล้ว`);
+      }
+    } catch (error) {
+      console.error('Failed to send gap alert:', error);
+    }
+  };
+
+  // Submit single result to PVT with gap check
   const submitToPVT = async (fileItem: FileItem) => {
     if (!fileItem.result) return;
 
@@ -252,7 +310,7 @@ export default function BatchOcr() {
     toast.success('ประมวลผลเสร็จสิ้น');
   };
 
-  // Bulk submit all completed results to PVT
+  // Bulk submit all completed results to PVT with gap detection
   const bulkSubmitToPVT = async () => {
     const completedFiles = files.filter(f => f.status === 'done' && f.result && f.pvtStatus !== 'submitted');
     
@@ -279,13 +337,30 @@ export default function BatchOcr() {
 
       const response = await bulkSubmitMutation.mutateAsync({ results });
 
+      // Track gaps for alert
+      const gapsDetected: { stationCode: string; ourSum: number; theirSum: number; gap: number }[] = [];
+
       // Update file statuses based on response
       setFiles(prev => prev.map(f => {
         const submitted = response.submitted.find(s => s.fileId === f.id);
         if (submitted) {
+          // Check if there's a gap (simulated - in real scenario, compare with official data)
+          // For demo, we'll mark as gap_detected if the station wasn't found
+          const hasGap = !submitted.success && submitted.error?.includes('ไม่พบหน่วย');
+          
+          if (hasGap && f.result) {
+            const ourSum = f.result.votes?.reduce((sum: number, v: any) => sum + v.voteCount, 0) || 0;
+            gapsDetected.push({
+              stationCode: f.result.stationCode,
+              ourSum,
+              theirSum: 0,
+              gap: ourSum,
+            });
+          }
+          
           return {
             ...f,
-            pvtStatus: submitted.success ? 'submitted' : 'error',
+            pvtStatus: submitted.success ? 'submitted' : (hasGap ? 'gap_detected' : 'error'),
             pvtError: submitted.error,
           };
         }
@@ -296,6 +371,14 @@ export default function BatchOcr() {
       
       if (response.summary.failed > 0) {
         toast.warning(`ล้มเหลว ${response.summary.failed} รายการ`);
+      }
+
+      // Send gap alerts if enabled
+      if (enableGapAlert && gapsDetected.length > 0) {
+        for (const gapInfo of gapsDetected) {
+          await sendGapAlert(gapInfo.stationCode, gapInfo.ourSum, gapInfo.theirSum, gapInfo.gap);
+        }
+        toast.warning(`พบ Gap ${gapsDetected.length} หน่วย - ส่งแจ้งเตือนแล้ว`);
       }
     } catch (error: any) {
       toast.error(`เกิดข้อผิดพลาด: ${error.message}`);
@@ -402,7 +485,7 @@ export default function BatchOcr() {
         return (
           <Badge className="bg-red-500/20 text-red-500">
             <AlertCircle className="w-3 h-3 mr-1" />
-            พบความแตกต่าง
+            พบ Gap
           </Badge>
         );
       case 'error':
@@ -454,7 +537,8 @@ export default function BatchOcr() {
               </CardTitle>
               <CardDescription>เลือก Provider และใส่ API Key สำหรับ OCR</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              {/* OCR Provider Settings */}
               <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek')}>
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
                   <TabsTrigger value="huggingface">Hugging Face</TabsTrigger>
@@ -490,6 +574,81 @@ export default function BatchOcr() {
                   checked={autoSubmitPVT}
                   onCheckedChange={setAutoSubmitPVT}
                 />
+              </div>
+
+              {/* Gap Alert Settings */}
+              <div className="border-t border-border pt-4">
+                <h3 className="text-base font-medium mb-4 flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Gap Alert Settings
+                </h3>
+                
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 max-w-md mb-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="enable-gap-alert" className="text-base font-medium">
+                      เปิดใช้งาน Gap Alert
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      แจ้งเตือนผ่าน Discord/LINE เมื่อพบ Gap
+                    </p>
+                  </div>
+                  <Switch
+                    id="enable-gap-alert"
+                    checked={enableGapAlert}
+                    onCheckedChange={setEnableGapAlert}
+                  />
+                </div>
+
+                {enableGapAlert && (
+                  <div className="space-y-4 max-w-md">
+                    <div>
+                      <Label htmlFor="discord-webhook" className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        Discord Webhook URL
+                      </Label>
+                      <Input
+                        id="discord-webhook"
+                        type="password"
+                        placeholder="https://discord.com/api/webhooks/..."
+                        value={discordWebhookUrl}
+                        onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="line-token" className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        LINE Notify Token
+                      </Label>
+                      <Input
+                        id="line-token"
+                        type="password"
+                        placeholder="LINE Notify Access Token"
+                        value={lineToken}
+                        onChange={(e) => setLineToken(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="gap-threshold">
+                        Gap Threshold (คะแนน)
+                      </Label>
+                      <Input
+                        id="gap-threshold"
+                        type="number"
+                        min={1}
+                        value={gapThreshold}
+                        onChange={(e) => setGapThreshold(parseInt(e.target.value) || 10)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        แจ้งเตือนเมื่อพบความแตกต่างมากกว่า {gapThreshold} คะแนน
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

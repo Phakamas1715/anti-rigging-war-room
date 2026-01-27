@@ -1642,6 +1642,144 @@ export const appRouter = router({
         };
       }),
 
+    // Send Gap Alert via Discord and LINE
+    sendGapAlert: protectedProcedure
+      .input(z.object({
+        stationCode: z.string(),
+        ourSum: z.number(),
+        theirSum: z.number(),
+        gap: z.number(),
+        discordWebhookUrl: z.string().optional(),
+        lineToken: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const results = {
+          discord: false,
+          line: false,
+        };
+        
+        // Calculate gap percentage
+        const gapPercent = input.theirSum > 0 ? input.gap / input.theirSum : 0;
+        
+        // Send Discord alert if webhook URL is provided
+        if (input.discordWebhookUrl) {
+          try {
+            const { sendPVTGapAlert } = await import('./discordNotify');
+            results.discord = await sendPVTGapAlert(
+              input.discordWebhookUrl,
+              gapPercent,
+              input.stationCode,
+              input.ourSum,
+              input.theirSum
+            );
+          } catch (error) {
+            console.error('[Discord Gap Alert] Failed:', error);
+          }
+        }
+        
+        // Send LINE alert if token is provided
+        if (input.lineToken) {
+          try {
+            const { sendPVTGapAlert } = await import('./lineNotify');
+            results.line = await sendPVTGapAlert(
+              input.lineToken,
+              gapPercent,
+              input.stationCode,
+              input.ourSum,
+              input.theirSum
+            );
+          } catch (error) {
+            console.error('[LINE Gap Alert] Failed:', error);
+          }
+        }
+        
+        return {
+          success: results.discord || results.line,
+          discordSent: results.discord,
+          lineSent: results.line,
+          message: `Gap Alert: ${input.stationCode} - Our: ${input.ourSum}, Their: ${input.theirSum}, Gap: ${input.gap}`,
+        };
+      }),
+
+    // Bulk check gaps and send alerts
+    bulkCheckAndAlert: protectedProcedure
+      .input(z.object({
+        stationCodes: z.array(z.string()),
+        discordWebhookUrl: z.string().optional(),
+        lineToken: z.string().optional(),
+        gapThreshold: z.number().default(10),
+      }))
+      .mutation(async ({ input }) => {
+        const stations = await getPollingStations();
+        const gapsFound: { stationCode: string; ourSum: number; theirSum: number; gap: number }[] = [];
+        
+        for (const code of input.stationCodes) {
+          const station = stations.find(s => s.stationCode === code);
+          if (!station) continue;
+          
+          const crowdsourced = await getCrowdsourcedResults(station.id);
+          const official = await getOfficialResults(station.id);
+          
+          if (!crowdsourced || !official) continue;
+          
+          const ourSum = crowdsourced.candidateAVotes || 0;
+          const theirSum = official.candidateAVotes || 0;
+          const gap = Math.abs(ourSum - theirSum);
+          
+          if (gap > input.gapThreshold) {
+            gapsFound.push({ stationCode: code, ourSum, theirSum, gap });
+          }
+        }
+        
+        // Send alerts for each gap found
+        const alertResults: { stationCode: string; discordSent: boolean; lineSent: boolean }[] = [];
+        
+        for (const gapInfo of gapsFound) {
+          const gapPercent = gapInfo.theirSum > 0 ? gapInfo.gap / gapInfo.theirSum : 0;
+          let discordSent = false;
+          let lineSent = false;
+          
+          if (input.discordWebhookUrl) {
+            try {
+              const { sendPVTGapAlert } = await import('./discordNotify');
+              discordSent = await sendPVTGapAlert(
+                input.discordWebhookUrl,
+                gapPercent,
+                gapInfo.stationCode,
+                gapInfo.ourSum,
+                gapInfo.theirSum
+              );
+            } catch (error) {
+              console.error('[Discord Bulk Gap Alert] Failed:', error);
+            }
+          }
+          
+          if (input.lineToken) {
+            try {
+              const { sendPVTGapAlert } = await import('./lineNotify');
+              lineSent = await sendPVTGapAlert(
+                input.lineToken,
+                gapPercent,
+                gapInfo.stationCode,
+                gapInfo.ourSum,
+                gapInfo.theirSum
+              );
+            } catch (error) {
+              console.error('[LINE Bulk Gap Alert] Failed:', error);
+            }
+          }
+          
+          alertResults.push({ stationCode: gapInfo.stationCode, discordSent, lineSent });
+        }
+        
+        return {
+          gapsFound: gapsFound.length,
+          alertsSent: alertResults.length,
+          gaps: gapsFound,
+          alerts: alertResults,
+        };
+      }),
+
     // Get submission status for batch results
     getSubmissionStatus: protectedProcedure
       .input(z.object({

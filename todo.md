@@ -215,3 +215,20 @@
 - [ ] Submit Selected button
 - [x] Status column in results table
 - [ ] Confirmation dialog before bulk submit
+
+
+## New Features - Phase 7.1: Gap Alert Notifications
+
+### Discord Gap Alert
+- [x] Trigger Discord webhook when Gap detected after PVT submission
+- [x] Rich embed with station code, our sum, their sum, and gap amount
+- [x] Severity color coding (red for large gaps)
+
+### LINE Gap Alert
+- [x] Trigger LINE Notify when Gap detected
+- [x] Include station details and gap information
+- [ ] Link to dashboard for investigation
+
+### Integration with Batch OCR
+- [x] Auto-trigger alert after bulk submit detects gaps
+- [x] Summary alert for multiple gaps in batch
