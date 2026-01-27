@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -54,6 +55,7 @@ export default function BatchOcr() {
   const [showSettings, setShowSettings] = useState(false);
   const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
   const [isSubmittingPVT, setIsSubmittingPVT] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   // Gap Alert Settings
   const [enableGapAlert, setEnableGapAlert] = useState(false);
@@ -779,7 +781,7 @@ export default function BatchOcr() {
             <Button 
               variant="default"
               className="bg-primary"
-              onClick={bulkSubmitToPVT}
+              onClick={() => setShowConfirmDialog(true)}
               disabled={isSubmittingPVT || stats.done === stats.pvtSubmitted}
             >
               {isSubmittingPVT ? (
@@ -990,6 +992,23 @@ export default function BatchOcr() {
           </Card>
         </div>
       </main>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยืนยันการส่งข้อมูลเข้า PVT</AlertDialogTitle>
+            <AlertDialogDescription>
+              คุณกำลังจะส่งข้อมูล {files.filter(f => f.status === "done" && f.pvtStatus !== "submitted").length} รายการเข้าระบบ PVT
+              การดำเนินการนี้ไม่สามารถยกเลิกได้ ต้องการดำเนินการต่อหรือไม่?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowConfirmDialog(false); bulkSubmitToPVT(); }}>ยืนยันส่งข้อมูล</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

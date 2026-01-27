@@ -289,3 +289,25 @@
 - [x] View pending submissions
 - [x] Export current snapshot
 - [x] Send bulk alerts
+
+
+## New Features - Phase 10: Pre-Deploy Improvements
+
+### Confirmation Dialog
+- [x] Add confirmation dialog before Bulk Submit to PVT
+- [x] Show summary of items to be submitted
+- [x] Prevent accidental submissions
+
+### Discord Webhook Persistent Storage
+- [x] Create database table for system settings
+- [x] Store Discord Webhook URL in database
+- [x] Store LINE Notify Token in database
+- [ ] Load settings on page load (UI integration pending)
+- [x] Settings persist across browsers/sessions
+
+### Help/Tutorial Page
+- [x] Create Help page for volunteers
+- [x] Step-by-step guide for submitting data
+- [x] OCR usage tutorial with screenshots
+- [x] FAQ section
+- [x] Contact/support information

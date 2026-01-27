@@ -10,7 +10,8 @@ import {
   dataSnapshots, InsertDataSnapshot, DataSnapshot,
   volunteers, InsertVolunteer, Volunteer,
   volunteerSubmissions, InsertVolunteerSubmission, VolunteerSubmission,
-  volunteerCodes, InsertVolunteerCode, VolunteerCode
+  volunteerCodes, InsertVolunteerCode, VolunteerCode,
+  systemSettings
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -681,4 +682,29 @@ export async function getVolunteerCodeStats() {
     unused: (totalCount?.count || 0) - (usedCount?.count || 0),
     active: activeCount?.count || 0
   };
+}
+
+// System Settings functions
+
+export async function getSetting(key: string, defaultValue: string = ''): Promise<string> {
+  const db = await getDb();
+  if (!db) return defaultValue;
+  const result = await db.select().from(systemSettings).where(eq(systemSettings.key, key)).limit(1);
+  return result[0]?.value ?? defaultValue;
+}
+export async function setSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(systemSettings)
+    .values({ key, value })
+    .onDuplicateKeyUpdate({ set: { value } });
+}
+export async function getAllSettings(): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) return {};
+  const results = await db.select().from(systemSettings);
+  return results.reduce((acc: Record<string, string>, row: { key: string; value: string | null }) => {
+    acc[row.key] = row.value ?? '';
+    return acc;
+  }, {} as Record<string, string>);
 }

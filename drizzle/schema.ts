@@ -211,3 +211,12 @@ export const volunteerCodes = mysqlTable("volunteer_codes", {
 
 export type VolunteerCode = typeof volunteerCodes.$inferSelect;
 export type InsertVolunteerCode = typeof volunteerCodes.$inferInsert;
+
+// System Settings table for storing configuration
+export const systemSettings = mysqlTable('system_settings', {
+  id: int('id').primaryKey().autoincrement(),
+  key: varchar('key', { length: 100 }).notNull().unique(),
+  value: text('value'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});

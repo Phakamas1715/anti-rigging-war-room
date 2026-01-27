@@ -22,6 +22,7 @@ import OcrScanner from "./pages/OcrScanner";
 import BatchOcr from "./pages/BatchOcr";
 import VolunteerLogin from "./pages/VolunteerLogin";
 import VolunteerCodes from "./pages/VolunteerCodes";
+import Help from "./pages/Help";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
 
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
       <Route path={"/volunteer/login"} component={VolunteerLogin} />
       <Route path={"/volunteer/app"} component={VolunteerApp} />
       <Route path={"/admin/volunteer-codes"} component={VolunteerCodes} />
+      <Route path={"/help"} component={Help} />
       <Route path={"/realtime"} component={RealTimeDashboard} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
