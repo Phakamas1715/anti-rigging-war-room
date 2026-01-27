@@ -241,3 +241,24 @@
 - [x] Add Gemini tab in OCR settings
 - [x] Use existing GEMINI_API_KEY from environment
 - [x] Update BatchOcr to support Gemini provider
+
+
+## New Features - Phase 8: Volunteer Code Login (No Registration)
+
+### Volunteer Code System
+- [x] Generate unique 6-digit volunteer codes
+- [x] Admin can create codes and assign to polling stations
+- [x] Volunteer enters code to access the system
+- [x] No email/phone/password required
+
+### Volunteer Login Page
+- [x] Simple login page with code input only
+- [x] Validate code and redirect to volunteer app
+- [x] Show assigned polling station info after login
+- [x] Session management for volunteers
+
+### Admin Management
+- [x] Bulk generate volunteer codes
+- [x] Export codes as CSV/PDF for distribution
+- [x] Revoke/deactivate codes
+- [x] View code usage status

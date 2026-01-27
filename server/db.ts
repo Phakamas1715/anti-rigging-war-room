@@ -9,7 +9,8 @@ import {
   networkTransactions, InsertNetworkTransaction, NetworkTransaction,
   dataSnapshots, InsertDataSnapshot, DataSnapshot,
   volunteers, InsertVolunteer, Volunteer,
-  volunteerSubmissions, InsertVolunteerSubmission, VolunteerSubmission
+  volunteerSubmissions, InsertVolunteerSubmission, VolunteerSubmission,
+  volunteerCodes, InsertVolunteerCode, VolunteerCode
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -464,4 +465,220 @@ export async function getOfficialResults(stationId: number) {
     .limit(1);
   
   return results[0] || null;
+}
+
+
+// ============ VOLUNTEER CODE QUERIES (No Registration Login) ============
+
+/**
+ * Generate a unique 6-digit volunteer code
+ */
+export function generateVolunteerCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Create a new volunteer access code
+ */
+export async function createVolunteerCode(data: {
+  stationId?: number;
+  volunteerName?: string;
+  phone?: string;
+  lineId?: string;
+  expiresAt?: Date;
+  createdBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Generate unique code
+  let code = generateVolunteerCode();
+  let attempts = 0;
+  
+  // Ensure code is unique
+  while (attempts < 10) {
+    const existing = await db.select().from(volunteerCodes).where(eq(volunteerCodes.code, code)).limit(1);
+    if (existing.length === 0) break;
+    code = generateVolunteerCode();
+    attempts++;
+  }
+  
+  const result = await db.insert(volunteerCodes).values({
+    code,
+    stationId: data.stationId,
+    volunteerName: data.volunteerName,
+    phone: data.phone,
+    lineId: data.lineId,
+    expiresAt: data.expiresAt,
+    createdBy: data.createdBy,
+  });
+  
+  return { code, insertId: result[0].insertId };
+}
+
+/**
+ * Bulk create volunteer codes
+ */
+export async function bulkCreateVolunteerCodes(count: number, createdBy?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const codes: string[] = [];
+  const existingCodes = new Set<string>();
+  
+  // Get all existing codes first
+  const existing = await db.select({ code: volunteerCodes.code }).from(volunteerCodes);
+  existing.forEach(e => existingCodes.add(e.code));
+  
+  // Generate unique codes
+  while (codes.length < count) {
+    const code = generateVolunteerCode();
+    if (!existingCodes.has(code) && !codes.includes(code)) {
+      codes.push(code);
+    }
+  }
+  
+  // Insert all codes
+  const values = codes.map(code => ({
+    code,
+    createdBy,
+  }));
+  
+  await db.insert(volunteerCodes).values(values);
+  
+  return codes;
+}
+
+/**
+ * Validate and login with volunteer code
+ */
+export async function loginWithVolunteerCode(code: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const results = await db.select().from(volunteerCodes)
+    .where(and(
+      eq(volunteerCodes.code, code),
+      eq(volunteerCodes.isActive, true)
+    ))
+    .limit(1);
+  
+  if (results.length === 0) {
+    return { success: false, error: "รหัสไม่ถูกต้องหรือถูกยกเลิกแล้ว" };
+  }
+  
+  const volunteerCode = results[0];
+  
+  // Check expiration
+  if (volunteerCode.expiresAt && new Date(volunteerCode.expiresAt) < new Date()) {
+    return { success: false, error: "รหัสหมดอายุแล้ว" };
+  }
+  
+  // Update usage status
+  await db.update(volunteerCodes)
+    .set({ 
+      isUsed: true, 
+      usedAt: volunteerCode.usedAt || new Date(),
+      lastAccessAt: new Date()
+    })
+    .where(eq(volunteerCodes.id, volunteerCode.id));
+  
+  return { 
+    success: true, 
+    volunteerCode,
+    stationId: volunteerCode.stationId
+  };
+}
+
+/**
+ * Get volunteer code by code string
+ */
+export async function getVolunteerCodeByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const results = await db.select().from(volunteerCodes)
+    .where(eq(volunteerCodes.code, code))
+    .limit(1);
+  
+  return results[0] || null;
+}
+
+/**
+ * Get all volunteer codes with optional filters
+ */
+export async function getVolunteerCodes(filters?: {
+  isUsed?: boolean;
+  isActive?: boolean;
+  stationId?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db.select().from(volunteerCodes);
+  
+  const conditions = [];
+  if (filters?.isUsed !== undefined) {
+    conditions.push(eq(volunteerCodes.isUsed, filters.isUsed));
+  }
+  if (filters?.isActive !== undefined) {
+    conditions.push(eq(volunteerCodes.isActive, filters.isActive));
+  }
+  if (filters?.stationId !== undefined) {
+    conditions.push(eq(volunteerCodes.stationId, filters.stationId));
+  }
+  
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  
+  return query.orderBy(desc(volunteerCodes.createdAt));
+}
+
+/**
+ * Update volunteer code info (name, phone, lineId, station)
+ */
+export async function updateVolunteerCode(code: string, data: {
+  volunteerName?: string;
+  phone?: string;
+  lineId?: string;
+  stationId?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.update(volunteerCodes)
+    .set(data)
+    .where(eq(volunteerCodes.code, code));
+}
+
+/**
+ * Deactivate a volunteer code
+ */
+export async function deactivateVolunteerCode(code: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.update(volunteerCodes)
+    .set({ isActive: false })
+    .where(eq(volunteerCodes.code, code));
+}
+
+/**
+ * Get volunteer code statistics
+ */
+export async function getVolunteerCodeStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, used: 0, unused: 0, active: 0 };
+  
+  const [totalCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteerCodes);
+  const [usedCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteerCodes).where(eq(volunteerCodes.isUsed, true));
+  const [activeCount] = await db.select({ count: sql<number>`count(*)` }).from(volunteerCodes).where(eq(volunteerCodes.isActive, true));
+  
+  return {
+    total: totalCount?.count || 0,
+    used: usedCount?.count || 0,
+    unused: (totalCount?.count || 0) - (usedCount?.count || 0),
+    active: activeCount?.count || 0
+  };
 }

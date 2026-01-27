@@ -21,15 +21,24 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Key, BarChart3, Network, FileText, Upload, AlertTriangle, Map, Camera, ScanLine } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: BarChart3, label: "Klimek Analysis", path: "/klimek" },
+  { icon: FileText, label: "Benford's Law", path: "/benford" },
+  { icon: Network, label: "Network Analysis", path: "/network" },
+  { icon: Map, label: "Spatial Map", path: "/spatial" },
+  { icon: Camera, label: "PVT Comparison", path: "/pvt" },
+  { icon: ScanLine, label: "Batch OCR", path: "/batch-ocr" },
+  { icon: Upload, label: "Evidence Upload", path: "/evidence" },
+  { icon: AlertTriangle, label: "Alerts", path: "/alerts" },
+  { icon: Users, label: "Volunteers", path: "/admin/volunteers" },
+  { icon: Key, label: "Volunteer Codes", path: "/admin/volunteer-codes" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

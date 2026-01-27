@@ -15,7 +15,10 @@ import {
   assignVolunteerToStation, getVolunteers, getVolunteerStats,
   createVolunteerSubmission, getVolunteerSubmissions, getPendingSubmissions,
   verifySubmission, getStationSubmissionStatus,
-  createCrowdsourcedResult, getCrowdsourcedResults, getOfficialResults
+  createCrowdsourcedResult, getCrowdsourcedResults, getOfficialResults,
+  createVolunteerCode, bulkCreateVolunteerCodes, loginWithVolunteerCode,
+  getVolunteerCodeByCode, getVolunteerCodes, updateVolunteerCode,
+  deactivateVolunteerCode, getVolunteerCodeStats
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
@@ -1816,6 +1819,160 @@ export const appRouter = router({
         }
         
         return status;
+      }),
+  }),
+
+  // ============ VOLUNTEER CODE LOGIN (NO REGISTRATION) ============
+  volunteerCode: router({
+    // Login with 6-digit code (public - no auth required)
+    login: publicProcedure
+      .input(z.object({
+        code: z.string().length(6),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await loginWithVolunteerCode(input.code);
+        
+        if (!result.success) {
+          return { success: false, error: result.error };
+        }
+        
+        // Set a session cookie for the volunteer
+        const volunteerSession = {
+          code: input.code,
+          stationId: result.stationId,
+          volunteerName: result.volunteerCode?.volunteerName,
+          loginAt: new Date().toISOString(),
+        };
+        
+        ctx.res.cookie('volunteer_session', JSON.stringify(volunteerSession), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        });
+        
+        return {
+          success: true,
+          volunteerName: result.volunteerCode?.volunteerName,
+          stationId: result.stationId,
+          phone: result.volunteerCode?.phone,
+        };
+      }),
+
+    // Get current volunteer session
+    me: publicProcedure.query(async ({ ctx }) => {
+      const sessionCookie = ctx.req.cookies?.volunteer_session;
+      if (!sessionCookie) return null;
+      
+      try {
+        const session = JSON.parse(sessionCookie);
+        const volunteerCode = await getVolunteerCodeByCode(session.code);
+        
+        if (!volunteerCode || !volunteerCode.isActive) {
+          return null;
+        }
+        
+        return {
+          code: session.code,
+          volunteerName: volunteerCode.volunteerName,
+          stationId: volunteerCode.stationId,
+          phone: volunteerCode.phone,
+          lineId: volunteerCode.lineId,
+        };
+      } catch {
+        return null;
+      }
+    }),
+
+    // Logout volunteer
+    logout: publicProcedure.mutation(({ ctx }) => {
+      ctx.res.clearCookie('volunteer_session');
+      return { success: true };
+    }),
+
+    // Update volunteer info (name, phone, lineId)
+    updateInfo: publicProcedure
+      .input(z.object({
+        code: z.string().length(6),
+        volunteerName: z.string().optional(),
+        phone: z.string().optional(),
+        lineId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await updateVolunteerCode(input.code, {
+          volunteerName: input.volunteerName,
+          phone: input.phone,
+          lineId: input.lineId,
+        });
+        return { success: true };
+      }),
+
+    // Admin: Create single code
+    create: protectedProcedure
+      .input(z.object({
+        stationId: z.number().optional(),
+        volunteerName: z.string().optional(),
+        phone: z.string().optional(),
+        lineId: z.string().optional(),
+        expiresAt: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await createVolunteerCode({
+          stationId: input.stationId,
+          volunteerName: input.volunteerName,
+          phone: input.phone,
+          lineId: input.lineId,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
+          createdBy: ctx.user?.id,
+        });
+        return result;
+      }),
+
+    // Admin: Bulk create codes
+    bulkCreate: protectedProcedure
+      .input(z.object({
+        count: z.number().min(1).max(1000),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const codes = await bulkCreateVolunteerCodes(input.count, ctx.user?.id);
+        return { codes, count: codes.length };
+      }),
+
+    // Admin: Get all codes
+    list: protectedProcedure
+      .input(z.object({
+        isUsed: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+        stationId: z.number().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return getVolunteerCodes(input);
+      }),
+
+    // Admin: Get code stats
+    stats: protectedProcedure.query(async () => {
+      return getVolunteerCodeStats();
+    }),
+
+    // Admin: Assign code to station
+    assignStation: protectedProcedure
+      .input(z.object({
+        code: z.string().length(6),
+        stationId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        await updateVolunteerCode(input.code, { stationId: input.stationId });
+        return { success: true };
+      }),
+
+    // Admin: Deactivate code
+    deactivate: protectedProcedure
+      .input(z.object({
+        code: z.string().length(6),
+      }))
+      .mutation(async ({ input }) => {
+        await deactivateVolunteerCode(input.code);
+        return { success: true };
       }),
   }),
 });

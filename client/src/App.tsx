@@ -20,6 +20,8 @@ import AdminVolunteers from "./pages/AdminVolunteers";
 import Settings from "./pages/Settings";
 import OcrScanner from "./pages/OcrScanner";
 import BatchOcr from "./pages/BatchOcr";
+import VolunteerLogin from "./pages/VolunteerLogin";
+import VolunteerCodes from "./pages/VolunteerCodes";
 
 function Router() {
   return (
@@ -40,6 +42,9 @@ function Router() {
       <Route path={"/settings"} component={Settings} />
       <Route path={"/ocr"} component={OcrScanner} />
       <Route path={"/batch-ocr"} component={BatchOcr} />
+      <Route path={"/volunteer/login"} component={VolunteerLogin} />
+      <Route path={"/volunteer/app"} component={VolunteerApp} />
+      <Route path={"/admin/volunteer-codes"} component={VolunteerCodes} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
