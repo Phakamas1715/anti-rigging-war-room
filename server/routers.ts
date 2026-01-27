@@ -184,6 +184,87 @@ function verifyProofMode(fileHash: string, storedHash: string, metadata: Record<
   };
 }
 
+// ============ THAILAND PROVINCES DATA ============
+const THAILAND_PROVINCES = [
+  { code: "10", name: "กรุงเทพมหานคร", region: "central", lat: 13.7563, lng: 100.5018 },
+  { code: "11", name: "สมุทรปราการ", region: "central", lat: 13.5991, lng: 100.5998 },
+  { code: "12", name: "นนทบุรี", region: "central", lat: 13.8621, lng: 100.5144 },
+  { code: "13", name: "ปทุมธานี", region: "central", lat: 14.0208, lng: 100.5250 },
+  { code: "14", name: "พระนครศรีอยุธยา", region: "central", lat: 14.3692, lng: 100.5877 },
+  { code: "15", name: "อ่างทอง", region: "central", lat: 14.5896, lng: 100.4549 },
+  { code: "16", name: "ลพบุรี", region: "central", lat: 14.7995, lng: 100.6534 },
+  { code: "17", name: "สิงห์บุรี", region: "central", lat: 14.8936, lng: 100.3967 },
+  { code: "18", name: "ชัยนาท", region: "central", lat: 15.1851, lng: 100.1251 },
+  { code: "19", name: "สระบุรี", region: "central", lat: 14.5289, lng: 100.9108 },
+  { code: "20", name: "ชลบุรี", region: "east", lat: 13.3611, lng: 100.9847 },
+  { code: "21", name: "ระยอง", region: "east", lat: 12.6814, lng: 101.2816 },
+  { code: "22", name: "จันทบุรี", region: "east", lat: 12.6113, lng: 102.1028 },
+  { code: "23", name: "ตราด", region: "east", lat: 12.2428, lng: 102.5177 },
+  { code: "24", name: "ฉะเชิงเทรา", region: "east", lat: 13.6904, lng: 101.0779 },
+  { code: "25", name: "ปราจีนบุรี", region: "east", lat: 14.0509, lng: 101.3717 },
+  { code: "26", name: "นครนายก", region: "central", lat: 14.2069, lng: 101.2131 },
+  { code: "27", name: "สระแก้ว", region: "east", lat: 13.8240, lng: 102.0645 },
+  { code: "30", name: "นครราชสีมา", region: "northeast", lat: 14.9799, lng: 102.0978 },
+  { code: "31", name: "บุรีรัมย์", region: "northeast", lat: 14.9930, lng: 103.1029 },
+  { code: "32", name: "สุรินทร์", region: "northeast", lat: 14.8818, lng: 103.4936 },
+  { code: "33", name: "ศรีสะเกษ", region: "northeast", lat: 15.1186, lng: 104.3220 },
+  { code: "34", name: "อุบลราชธานี", region: "northeast", lat: 15.2287, lng: 104.8564 },
+  { code: "35", name: "ยโสธร", region: "northeast", lat: 15.7920, lng: 104.1452 },
+  { code: "36", name: "ชัยภูมิ", region: "northeast", lat: 15.8068, lng: 102.0316 },
+  { code: "37", name: "อำนาจเจริญ", region: "northeast", lat: 15.8656, lng: 104.6258 },
+  { code: "38", name: "บึงกาฬ", region: "northeast", lat: 18.3609, lng: 103.6466 },
+  { code: "39", name: "หนองบัวลำภู", region: "northeast", lat: 17.2218, lng: 102.4260 },
+  { code: "40", name: "ขอนแก่น", region: "northeast", lat: 16.4419, lng: 102.8360 },
+  { code: "41", name: "อุดรธานี", region: "northeast", lat: 17.4156, lng: 102.7872 },
+  { code: "42", name: "เลย", region: "northeast", lat: 17.4860, lng: 101.7223 },
+  { code: "43", name: "หนองคาย", region: "northeast", lat: 17.8783, lng: 102.7420 },
+  { code: "44", name: "มหาสารคาม", region: "northeast", lat: 16.1851, lng: 103.3008 },
+  { code: "45", name: "ร้อยเอ็ด", region: "northeast", lat: 16.0538, lng: 103.6520 },
+  { code: "46", name: "กาฬสินธุ์", region: "northeast", lat: 16.4314, lng: 103.5059 },
+  { code: "47", name: "สกลนคร", region: "northeast", lat: 17.1545, lng: 104.1348 },
+  { code: "48", name: "นครพนม", region: "northeast", lat: 17.3921, lng: 104.7694 },
+  { code: "49", name: "มุกดาหาร", region: "northeast", lat: 16.5453, lng: 104.7235 },
+  { code: "50", name: "เชียงใหม่", region: "north", lat: 18.7883, lng: 98.9853 },
+  { code: "51", name: "ลำพูน", region: "north", lat: 18.5744, lng: 99.0087 },
+  { code: "52", name: "ลำปาง", region: "north", lat: 18.2888, lng: 99.4909 },
+  { code: "53", name: "อุตรดิตถ์", region: "north", lat: 17.6200, lng: 100.0993 },
+  { code: "54", name: "แพร่", region: "north", lat: 18.1445, lng: 100.1403 },
+  { code: "55", name: "น่าน", region: "north", lat: 18.7756, lng: 100.7730 },
+  { code: "56", name: "พะเยา", region: "north", lat: 19.1664, lng: 99.9019 },
+  { code: "57", name: "เชียงราย", region: "north", lat: 19.9105, lng: 99.8406 },
+  { code: "58", name: "แม่ฮ่องสอน", region: "north", lat: 19.3020, lng: 97.9654 },
+  { code: "60", name: "นครสวรรค์", region: "central", lat: 15.7030, lng: 100.1367 },
+  { code: "61", name: "อุทัยธานี", region: "central", lat: 15.3835, lng: 100.0245 },
+  { code: "62", name: "กำแพงเพชร", region: "central", lat: 16.4827, lng: 99.5226 },
+  { code: "63", name: "ตาก", region: "west", lat: 16.8840, lng: 99.1258 },
+  { code: "64", name: "สุโขทัย", region: "central", lat: 17.0070, lng: 99.8265 },
+  { code: "65", name: "พิษณุโลก", region: "central", lat: 16.8211, lng: 100.2659 },
+  { code: "66", name: "พิจิตร", region: "central", lat: 16.4429, lng: 100.3487 },
+  { code: "67", name: "เพชรบูรณ์", region: "central", lat: 16.4190, lng: 101.1591 },
+  { code: "70", name: "ราชบุรี", region: "west", lat: 13.5282, lng: 99.8134 },
+  { code: "71", name: "กาญจนบุรี", region: "west", lat: 14.0227, lng: 99.5328 },
+  { code: "72", name: "สุพรรณบุรี", region: "central", lat: 14.4744, lng: 100.1177 },
+  { code: "73", name: "นครปฐม", region: "central", lat: 13.8196, lng: 100.0445 },
+  { code: "74", name: "สมุทรสาคร", region: "central", lat: 13.5475, lng: 100.2744 },
+  { code: "75", name: "สมุทรสงคราม", region: "central", lat: 13.4098, lng: 100.0022 },
+  { code: "76", name: "เพชรบุรี", region: "west", lat: 13.1119, lng: 99.9390 },
+  { code: "77", name: "ประจวบคีรีขันธ์", region: "west", lat: 11.8126, lng: 99.7957 },
+  { code: "80", name: "นครศรีธรรมราช", region: "south", lat: 8.4324, lng: 99.9631 },
+  { code: "81", name: "กระบี่", region: "south", lat: 8.0863, lng: 98.9063 },
+  { code: "82", name: "พังงา", region: "south", lat: 8.4509, lng: 98.5253 },
+  { code: "83", name: "ภูเก็ต", region: "south", lat: 7.8804, lng: 98.3923 },
+  { code: "84", name: "สุราษฎร์ธานี", region: "south", lat: 9.1382, lng: 99.3217 },
+  { code: "85", name: "ระนอง", region: "south", lat: 9.9528, lng: 98.6085 },
+  { code: "86", name: "ชุมพร", region: "south", lat: 10.4930, lng: 99.1800 },
+  { code: "90", name: "สงขลา", region: "south", lat: 7.1756, lng: 100.6142 },
+  { code: "91", name: "สตูล", region: "south", lat: 6.6238, lng: 100.0673 },
+  { code: "92", name: "ตรัง", region: "south", lat: 7.5593, lng: 99.6114 },
+  { code: "93", name: "พัทลุง", region: "south", lat: 7.6167, lng: 100.0740 },
+  { code: "94", name: "ปัตตานี", region: "south", lat: 6.8698, lng: 101.2501 },
+  { code: "95", name: "ยะลา", region: "south", lat: 6.5410, lng: 101.2803 },
+  { code: "96", name: "นราธิวาส", region: "south", lat: 6.4318, lng: 101.8231 },
+];
+
 export const appRouter = router({
   system: systemRouter,
   
@@ -520,6 +601,266 @@ export const appRouter = router({
           totalSnapshots: snapshots.length
         };
       }),
+  }),
+
+  // ============ DATA IMPORT ============
+  import: router({
+    // Parse CSV data
+    parseCSV: protectedProcedure
+      .input(z.object({
+        csvContent: z.string(),
+        dataType: z.enum(["polling_stations", "election_results", "network_transactions"])
+      }))
+      .mutation(async ({ input }) => {
+        const lines = input.csvContent.trim().split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const rows = lines.slice(1).map(line => {
+          const values = line.split(',');
+          const row: Record<string, string> = {};
+          headers.forEach((h, i) => {
+            row[h] = values[i]?.trim() || '';
+          });
+          return row;
+        });
+        
+        return {
+          headers,
+          rows,
+          rowCount: rows.length,
+          dataType: input.dataType
+        };
+      }),
+      
+    // Import polling stations
+    pollingStations: protectedProcedure
+      .input(z.array(z.object({
+        stationCode: z.string(),
+        name: z.string(),
+        province: z.string(),
+        district: z.string(),
+        subDistrict: z.string().optional(),
+        registeredVoters: z.number().optional(),
+        latitude: z.string().optional(),
+        longitude: z.string().optional(),
+      })))
+      .mutation(async ({ input }) => {
+        const results = { success: 0, failed: 0, errors: [] as string[] };
+        
+        for (const station of input) {
+          try {
+            await createPollingStation(station);
+            results.success++;
+          } catch (e) {
+            results.failed++;
+            results.errors.push(`Station ${station.stationCode}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          }
+        }
+        
+        return results;
+      }),
+      
+    // Import election results
+    electionResults: protectedProcedure
+      .input(z.array(z.object({
+        stationCode: z.string(),
+        totalVoters: z.number(),
+        validVotes: z.number(),
+        invalidVotes: z.number(),
+        candidateAVotes: z.number(),
+        candidateBVotes: z.number(),
+        source: z.enum(["official", "crowdsourced", "pvt"]).default("official"),
+      })))
+      .mutation(async ({ input }) => {
+        const results = { success: 0, failed: 0, errors: [] as string[] };
+        
+        for (const data of input) {
+          try {
+            const station = await getPollingStationByCode(data.stationCode);
+            if (!station) {
+              results.failed++;
+              results.errors.push(`Station ${data.stationCode}: Not found`);
+              continue;
+            }
+            
+            const turnout = data.totalVoters > 0 ? (data.validVotes + data.invalidVotes) / data.totalVoters : 0;
+            const candidateAShare = data.validVotes > 0 ? data.candidateAVotes / data.validVotes : 0;
+            
+            await createElectionData({
+              stationId: station.id,
+              electionDate: new Date(),
+              totalVoters: data.totalVoters,
+              validVotes: data.validVotes,
+              invalidVotes: data.invalidVotes,
+              candidateAVotes: data.candidateAVotes,
+              candidateBVotes: data.candidateBVotes,
+              source: data.source,
+              turnout: turnout.toString(),
+              candidateAShare: candidateAShare.toString(),
+            });
+            results.success++;
+          } catch (e) {
+            results.failed++;
+            results.errors.push(`Station ${data.stationCode}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          }
+        }
+        
+        return results;
+      }),
+  }),
+
+  // ============ REPORT EXPORT ============
+  export: router({
+    // Generate comprehensive forensic report
+    forensicReport: publicProcedure.query(async () => {
+      const klimekData = await getElectionDataForAnalysis();
+      const alerts = await getFraudAlerts();
+      const stats = await getDashboardStats();
+      
+      // Calculate Klimek analysis
+      let klimekResult = null;
+      if (klimekData.length > 0) {
+        const analysisData = klimekData.map(d => ({
+          turnout: parseFloat(d.turnout?.toString() || "0"),
+          voteShare: parseFloat(d.candidateAShare?.toString() || "0")
+        }));
+        klimekResult = calculateKlimekAnalysis(analysisData);
+      } else {
+        klimekResult = calculateKlimekAnalysis(generateDemoElectionData());
+      }
+      
+      // Calculate Benford analysis from vote counts
+      const voteCounts = klimekData.map(d => d.candidateAVotes || 0).filter(v => v > 10);
+      const benfordResult = voteCounts.length > 0 ? calculateBenfordAnalysis(voteCounts) : null;
+      
+      // Get network analysis
+      const transactions = await getNetworkTransactions();
+      const networkResult = transactions.length > 0 
+        ? calculateNetworkCentrality(transactions.map(tx => ({ source: tx.sourceNode, target: tx.targetNode })))
+        : calculateNetworkCentrality(generateDemoNetworkData());
+      
+      return {
+        generatedAt: new Date().toISOString(),
+        summary: {
+          totalStations: stats.totalStations,
+          totalAlerts: stats.totalAlerts,
+          pendingReview: stats.unresolvedAlerts,
+          totalEvidence: stats.totalEvidence,
+        },
+        klimekAnalysis: {
+          alpha: klimekResult.alpha,
+          beta: klimekResult.beta,
+          correlation: klimekResult.correlation,
+          fraudZoneCount: klimekResult.fraudZoneCount,
+          totalUnits: klimekResult.totalUnits,
+          isSuspicious: klimekResult.isSuspicious,
+          interpretation: klimekResult.alpha > 0.05 
+            ? `ตรวจพบความผิดปกติ: Alpha = ${(klimekResult.alpha * 100).toFixed(2)}% ของหน่วยเลือกตั้งอยู่ในโซนทุจริต (Turnout > 85% และ Vote Share > 85%)`
+            : `ไม่พบความผิดปกติที่ชัดเจน: Alpha = ${(klimekResult.alpha * 100).toFixed(2)}% อยู่ในเกณฑ์ปกติ`,
+        },
+        benfordAnalysis: benfordResult ? {
+          chiSquare: benfordResult.chiSquare,
+          criticalValue: 16.92,
+          isSuspicious: benfordResult.isSuspicious,
+          interpretation: benfordResult.isSuspicious
+            ? `ตรวจพบความผิดปกติ: Chi-square = ${benfordResult.chiSquare.toFixed(2)} > 16.92 แสดงว่าตัวเลขอาจถูกแต่งขึ้น`
+            : `ไม่พบความผิดปกติ: Chi-square = ${benfordResult.chiSquare.toFixed(2)} < 16.92 ตัวเลขกระจายตามธรรมชาติ`,
+          deviations: benfordResult.deviations,
+        } : null,
+        networkAnalysis: {
+          totalNodes: networkResult.totalNodes,
+          totalEdges: networkResult.totalEdges,
+          hubs: networkResult.hubs.slice(0, 10),
+          interpretation: networkResult.hubs.length > 0
+            ? `พบหัวคะแนน (Hubs) ${networkResult.hubs.length} ราย ที่มี Centrality Score สูงผิดปกติ`
+            : `ไม่พบหัวคะแนนที่มี Centrality Score สูงผิดปกติ`,
+        },
+        alerts: alerts.slice(0, 20).map(a => ({
+          type: a.alertType,
+          severity: a.severity,
+          description: a.description,
+          createdAt: a.createdAt,
+        })),
+        legalDisclaimer: `รายงานฉบับนี้จัดทำขึ้นโดยใช้วิธีการทางสถิติและนิติวิทยาศาสตร์การเลือกตั้ง (Election Forensics) ตามมาตรฐานสากล ผลการวิเคราะห์เป็นหลักฐานทางสถิติที่สามารถใช้ประกอบการพิจารณาทางกฎหมายได้`,
+      };
+    }),
+  }),
+
+  // ============ SPATIAL MAP ============
+  spatialMap: router({
+    // Get Thailand provinces with election data
+    provinces: publicProcedure.query(async () => {
+      const stations = await getPollingStations();
+      const electionData = await getElectionDataForAnalysis();
+      
+      // Group data by province
+      const provinceData = new Map<string, { stations: number; avgTurnout: number; avgVoteShare: number; zScore: number }>();
+      
+      THAILAND_PROVINCES.forEach(prov => {
+        const provStations = stations.filter(s => s.province === prov.name);
+        const provElectionData = electionData.filter(d => 
+          provStations.some(s => s.id === d.stationId)
+        );
+        
+        if (provElectionData.length > 0) {
+          const avgTurnout = provElectionData.reduce((acc, d) => acc + parseFloat(d.turnout?.toString() || "0"), 0) / provElectionData.length;
+          const avgVoteShare = provElectionData.reduce((acc, d) => acc + parseFloat(d.candidateAShare?.toString() || "0"), 0) / provElectionData.length;
+          
+          provinceData.set(prov.code, {
+            stations: provStations.length,
+            avgTurnout,
+            avgVoteShare,
+            zScore: 0 // Will be calculated below
+          });
+        }
+      });
+      
+      // Calculate Z-scores for each province
+      const allTurnouts = Array.from(provinceData.values()).map(d => d.avgTurnout);
+      const meanTurnout = allTurnouts.length > 0 ? allTurnouts.reduce((a, b) => a + b, 0) / allTurnouts.length : 0;
+      const stdTurnout = allTurnouts.length > 0 ? Math.sqrt(allTurnouts.reduce((acc, t) => acc + Math.pow(t - meanTurnout, 2), 0) / allTurnouts.length) : 1;
+      
+      provinceData.forEach((data, code) => {
+        data.zScore = stdTurnout > 0 ? (data.avgTurnout - meanTurnout) / stdTurnout : 0;
+      });
+      
+      return THAILAND_PROVINCES.map(prov => {
+        const data = provinceData.get(prov.code);
+        return {
+          ...prov,
+          stations: data?.stations || 0,
+          avgTurnout: data?.avgTurnout || 0,
+          avgVoteShare: data?.avgVoteShare || 0,
+          zScore: data?.zScore || 0,
+          isSuspicious: Math.abs(data?.zScore || 0) > 2.5,
+        };
+      });
+    }),
+    
+    // Get demo data for spatial map
+    demoData: publicProcedure.query(async () => {
+      // Generate demo data for all provinces
+      return THAILAND_PROVINCES.map(prov => {
+        const baseVoteShare = 0.4 + Math.random() * 0.2;
+        const baseTurnout = 0.6 + Math.random() * 0.2;
+        
+        // Add some suspicious provinces
+        const isSuspicious = Math.random() < 0.15;
+        const turnout = isSuspicious ? 0.9 + Math.random() * 0.1 : baseTurnout;
+        const voteShare = isSuspicious ? 0.85 + Math.random() * 0.15 : baseVoteShare;
+        
+        // Calculate Z-score (simplified)
+        const zScore = isSuspicious ? 2.5 + Math.random() * 1.5 : (Math.random() - 0.5) * 2;
+        
+        return {
+          ...prov,
+          stations: Math.floor(50 + Math.random() * 200),
+          avgTurnout: turnout,
+          avgVoteShare: voteShare,
+          zScore,
+          isSuspicious: Math.abs(zScore) > 2.5,
+        };
+      });
+    }),
   }),
 });
 

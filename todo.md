@@ -23,7 +23,7 @@
 - [x] Klimek Model Heatmap visualization with Fraud Zone detection
 - [x] Benford's Law frequency chart visualization
 - [x] SNA network graph visualization with Hub detection
-- [ ] Spatial correlation map visualization
+- [x] Spatial correlation map visualization
 - [x] PVT comparison dashboard (Our Sum vs Their Sum)
 - [x] Time-series chart for detecting data jumps
 
@@ -36,4 +36,32 @@
 ## Alerts & Reports
 - [x] Alert system for anomaly detection (Alpha > 0.05)
 - [x] Alert for PVT gap detection
-- [ ] Report generation and export for legal use
+- [x] Report generation and export for legal use
+
+## New Features - Phase 2
+
+### Import System (Admin Panel)
+- [x] Admin page for data import
+- [x] CSV file upload and parsing
+- [x] Excel file upload and parsing
+- [x] Bulk import polling station data
+- [x] Bulk import election results
+- [x] Data validation and error handling
+- [ ] Import history and logs
+
+### Export System (PDF Reports)
+- [x] PDF report generation API
+- [x] Klimek Model analysis report with heatmap
+- [ ] Benford's Law analysis report with charts
+- [x] SNA network analysis report
+- [ ] PVT comparison report
+- [x] Combined forensic evidence report for legal use
+- [x] Report download functionality
+
+### Z-Score Spatial Map
+- [x] Thailand map visualization
+- [x] Province-level anomaly display
+- [ ] District-level drill-down
+- [x] Color-coded Z-Score indicators
+- [x] Interactive map with tooltips
+- [x] Neighbor comparison visualization

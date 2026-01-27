@@ -11,7 +11,10 @@ import {
   BarChart3,
   Network,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  Upload,
+  FileText,
+  Map
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -132,6 +135,12 @@ export default function Dashboard() {
                   Social Network Analysis
                 </Button>
               </Link>
+              <Link href="/spatial">
+                <Button className="w-full justify-start bg-slate-800 hover:bg-slate-700 text-white">
+                  <Map className="mr-2 h-4 w-4 text-green-500" />
+                  Z-Score Spatial Map
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -190,6 +199,55 @@ export default function Dashboard() {
               </Link>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Admin Tools */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Link href="/admin/import">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-cyan-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-cyan-500/10 rounded-lg">
+                    <Upload className="h-8 w-8 text-cyan-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">นำเข้าข้อมูล</h3>
+                    <p className="text-sm text-slate-400">Import CSV/Excel จาก กกต.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/export">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-purple-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-500/10 rounded-lg">
+                    <FileText className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">Export รายงาน</h3>
+                    <p className="text-sm text-slate-400">รายงานนิติวิทยาศาสตร์สำหรับศาล</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/pvt">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-yellow-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-yellow-500/10 rounded-lg">
+                    <Activity className="h-8 w-8 text-yellow-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">PVT Comparison</h3>
+                    <p className="text-sm text-slate-400">เปรียบเทียบผลนับคู่ขนาน</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Analysis Summary */}

@@ -12,6 +12,9 @@ import NetworkAnalysis from "./pages/NetworkAnalysis";
 import EvidenceUpload from "./pages/EvidenceUpload";
 import Alerts from "./pages/Alerts";
 import PVTComparison from "./pages/PVTComparison";
+import AdminImport from "./pages/AdminImport";
+import SpatialMap from "./pages/SpatialMap";
+import ExportReport from "./pages/ExportReport";
 
 function Router() {
   return (
@@ -24,6 +27,9 @@ function Router() {
       <Route path={"/evidence"} component={EvidenceUpload} />
       <Route path={"/alerts"} component={Alerts} />
       <Route path={"/pvt"} component={PVTComparison} />
+      <Route path={"/admin/import"} component={AdminImport} />
+      <Route path={"/spatial"} component={SpatialMap} />
+      <Route path={"/export"} component={ExportReport} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
