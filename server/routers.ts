@@ -1975,6 +1975,195 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ============ REAL-TIME DASHBOARD ============
+  realtime: router({
+    // Overview statistics
+    overview: publicProcedure.query(async () => {
+      const db = await import('./db').then(m => m.getDb());
+      if (!db) {
+        return {
+          ourTotalVotes: 0,
+          officialTotalVotes: 0,
+          totalStations: 0,
+          stationsReported: 0,
+          gapsDetected: 0,
+        };
+      }
+      
+      const stations = await getPollingStations();
+      const totalStations = stations.length;
+      
+      let ourTotalVotes = 0;
+      let officialTotalVotes = 0;
+      let stationsReported = 0;
+      let gapsDetected = 0;
+      
+      for (const station of stations) {
+        const crowdsourced = await getCrowdsourcedResults(station.id);
+        const official = await getOfficialResults(station.id);
+        
+        if (crowdsourced) {
+          stationsReported++;
+          ourTotalVotes += (crowdsourced.candidateAVotes || 0) + 
+                          (crowdsourced.candidateBVotes || 0);
+        }
+        
+        if (official) {
+          officialTotalVotes += (official.candidateAVotes || 0) + 
+                               (official.candidateBVotes || 0);
+        }
+        
+        if (crowdsourced && official) {
+          const ourSum = (crowdsourced.candidateAVotes || 0) + 
+                        (crowdsourced.candidateBVotes || 0);
+          const theirSum = (official.candidateAVotes || 0) + 
+                          (official.candidateBVotes || 0);
+          if (Math.abs(ourSum - theirSum) > 10) {
+            gapsDetected++;
+          }
+        }
+      }
+      
+      return {
+        ourTotalVotes,
+        officialTotalVotes,
+        totalStations,
+        stationsReported,
+        gapsDetected,
+      };
+    }),
+
+    // Recent submissions
+    recentSubmissions: publicProcedure
+      .input(z.object({ limit: z.number().default(10) }))
+      .query(async ({ input }) => {
+        const stations = await getPollingStations();
+        const submissions: {
+          id: number;
+          stationCode: string;
+          province: string;
+          totalVotes: number;
+          submittedAt: Date;
+          hasGap: boolean;
+        }[] = [];
+        
+        for (const station of stations) {
+          const crowdsourced = await getCrowdsourcedResults(station.id);
+          const official = await getOfficialResults(station.id);
+          
+          if (crowdsourced) {
+            const totalVotes = (crowdsourced.candidateAVotes || 0) + 
+                              (crowdsourced.candidateBVotes || 0);
+            const officialSum = official ? 
+              (official.candidateAVotes || 0) + (official.candidateBVotes || 0) : 0;
+            
+            submissions.push({
+              id: station.id,
+              stationCode: station.stationCode,
+              province: station.province,
+              totalVotes,
+              submittedAt: crowdsourced.createdAt || new Date(),
+              hasGap: official ? Math.abs(totalVotes - officialSum) > 10 : false,
+            });
+          }
+        }
+        
+        // Sort by submittedAt desc and limit
+        return submissions
+          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+          .slice(0, input.limit);
+      }),
+
+    // Gap alerts
+    gapAlerts: publicProcedure
+      .input(z.object({ limit: z.number().default(5) }))
+      .query(async ({ input }) => {
+        const stations = await getPollingStations();
+        const gaps: {
+          stationId: number;
+          stationCode: string;
+          ourSum: number;
+          theirSum: number;
+          gapAmount: number;
+        }[] = [];
+        
+        for (const station of stations) {
+          const crowdsourced = await getCrowdsourcedResults(station.id);
+          const official = await getOfficialResults(station.id);
+          
+          if (crowdsourced && official) {
+            const ourSum = (crowdsourced.candidateAVotes || 0) + 
+                          (crowdsourced.candidateBVotes || 0);
+            const theirSum = (official.candidateAVotes || 0) + 
+                            (official.candidateBVotes || 0);
+            const gapAmount = ourSum - theirSum;
+            
+            if (Math.abs(gapAmount) > 10) {
+              gaps.push({
+                stationId: station.id,
+                stationCode: station.stationCode,
+                ourSum,
+                theirSum,
+                gapAmount,
+              });
+            }
+          }
+        }
+        
+        // Sort by absolute gap amount desc
+        return gaps
+          .sort((a, b) => Math.abs(b.gapAmount) - Math.abs(a.gapAmount))
+          .slice(0, input.limit);
+      }),
+
+    // Candidate votes summary
+    candidateVotes: publicProcedure.query(async () => {
+      const stations = await getPollingStations();
+      const candidates: { candidateId: string; candidateName: string; votes: number }[] = [
+        { candidateId: 'A', candidateName: 'ผู้สมัคร A', votes: 0 },
+        { candidateId: 'B', candidateName: 'ผู้สมัคร B', votes: 0 },
+      ];
+      
+      for (const station of stations) {
+        const crowdsourced = await getCrowdsourcedResults(station.id);
+        if (crowdsourced) {
+          candidates[0].votes += crowdsourced.candidateAVotes || 0;
+          candidates[1].votes += crowdsourced.candidateBVotes || 0;
+        }
+      }
+      
+      return candidates.filter(c => c.votes > 0);
+    }),
+
+    // Province statistics
+    provinceStats: publicProcedure.query(async () => {
+      const stations = await getPollingStations();
+      const provinceMap = new Map<string, { totalStations: number; reportedStations: number }>();
+      
+      for (const station of stations) {
+        const prov = station.province || 'ไม่ระบุ';
+        if (!provinceMap.has(prov)) {
+          provinceMap.set(prov, { totalStations: 0, reportedStations: 0 });
+        }
+        const data = provinceMap.get(prov)!;
+        data.totalStations++;
+        
+        const crowdsourced = await getCrowdsourcedResults(station.id);
+        if (crowdsourced) {
+          data.reportedStations++;
+        }
+      }
+      
+      return Array.from(provinceMap.entries())
+        .map(([province, data]) => ({
+          province,
+          totalStations: data.totalStations,
+          reportedStations: data.reportedStations,
+        }))
+        .sort((a, b) => b.totalStations - a.totalStations);
+    }),
+  }),
 });
 
 // ============ DEMO DATA GENERATORS ============

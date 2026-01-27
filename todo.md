@@ -262,3 +262,30 @@
 - [x] Export codes as CSV/PDF for distribution
 - [x] Revoke/deactivate codes
 - [x] View code usage status
+
+
+## New Features - Phase 9: Real-time Admin Dashboard
+
+### Overview Statistics
+- [x] Total votes counted (our data vs official)
+- [x] Stations reported vs total stations
+- [x] Coverage percentage by province/district
+- [x] Gap summary (total gaps, average gap size)
+
+### Real-time Updates
+- [x] Auto-refresh data every 30 seconds
+- [x] Live submission feed (latest 10 submissions)
+- [x] Real-time gap detection alerts
+- [x] Progress bar for station coverage
+
+### Visualizations
+- [ ] Province-level coverage map
+- [x] Vote distribution pie chart by candidate
+- [ ] Timeline of submissions
+- [ ] Gap severity heatmap
+
+### Quick Actions
+- [x] Jump to station with largest gap
+- [x] View pending submissions
+- [x] Export current snapshot
+- [x] Send bulk alerts
