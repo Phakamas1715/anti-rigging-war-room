@@ -1,6 +1,6 @@
 /**
  * DeepSeek OCR Module for Vote Counting Board Analysis
- * Uses DeepSeek API (OpenAI-compatible) for image analysis
+ * Supports both Hugging Face Inference API and DeepSeek API
  */
 
 import axios from 'axios';
@@ -25,9 +25,94 @@ interface OcrResult {
 }
 
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+const HF_INFERENCE_API_URL = 'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-OCR';
 
 /**
- * Analyze vote counting board image using DeepSeek Vision
+ * Analyze vote counting board image using Hugging Face DeepSeek-OCR
+ */
+export async function analyzeWithHuggingFace(
+  imageBase64: string,
+  hfToken: string
+): Promise<OcrResult> {
+  const startTime = Date.now();
+
+  try {
+    if (!hfToken) {
+      return {
+        success: false,
+        votes: [],
+        error: 'Hugging Face API Token is required. Please configure HF_TOKEN in Settings.',
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    // Convert base64 to buffer
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    // Call Hugging Face Inference API
+    const response = await axios.post(
+      HF_INFERENCE_API_URL,
+      imageBuffer,
+      {
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/octet-stream',
+        },
+        timeout: 120000, // 2 minutes timeout
+      }
+    );
+
+    // Parse the OCR response
+    const ocrText = response.data?.generated_text || 
+                    response.data?.[0]?.generated_text || 
+                    (typeof response.data === 'string' ? response.data : '');
+    
+    // Parse the raw OCR text to extract vote data
+    return parseOcrText(ocrText, startTime);
+
+  } catch (error: any) {
+    console.error('[HF OCR] Error:', error.message);
+
+    // Handle specific error cases
+    if (error.response?.status === 503) {
+      return {
+        success: false,
+        votes: [],
+        error: 'Model is loading. Please try again in 20-30 seconds.',
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    if (error.response?.status === 401) {
+      return {
+        success: false,
+        votes: [],
+        error: 'Invalid Hugging Face API Token. Please check your HF_TOKEN in Settings.',
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    if (error.response?.status === 400) {
+      return {
+        success: false,
+        votes: [],
+        error: 'Invalid image format. Please use JPEG or PNG.',
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    return {
+      success: false,
+      votes: [],
+      error: `OCR processing failed: ${error.response?.data?.error || error.message}`,
+      processingTime: Date.now() - startTime
+    };
+  }
+}
+
+/**
+ * Analyze vote counting board image using DeepSeek Vision API
  */
 export async function analyzeVoteCountingBoard(
   imageUrl: string,
@@ -136,6 +221,98 @@ export async function analyzeVoteCountingBoard(
       processingTime: Date.now() - startTime
     };
   }
+}
+
+/**
+ * Parse raw OCR text and extract vote data
+ */
+function parseOcrText(text: string, startTime: number): OcrResult {
+  try {
+    // Try to parse as JSON first
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        success: true,
+        stationCode: parsed.stationCode || parsed.station_code,
+        totalVoters: parsed.totalVoters || parsed.total_voters || 0,
+        totalBallots: parsed.totalBallots || parsed.total_ballots || 0,
+        spoiledBallots: parsed.spoiledBallots || parsed.spoiled_ballots || 0,
+        votes: (parsed.votes || []).map((v: any, i: number) => ({
+          candidateName: v.candidateName || v.name || `ผู้สมัครหมายเลข ${i + 1}`,
+          candidateNumber: v.candidateNumber || v.number || i + 1,
+          voteCount: v.voteCount || v.count || 0,
+          confidence: v.confidence || 85
+        })),
+        rawText: text,
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    // If not JSON, extract data using patterns
+    return extractFromRawText(text, startTime);
+
+  } catch (error) {
+    return extractFromRawText(text, startTime);
+  }
+}
+
+/**
+ * Extract vote data from raw text using pattern matching
+ */
+function extractFromRawText(text: string, startTime: number): OcrResult {
+  const votes: VoteCount[] = [];
+  
+  // Thai vote patterns
+  const patterns = [
+    /(?:หมายเลข|เบอร์)\s*(\d+)[:\s]+(\d+)\s*(?:คะแนน|เสียง)?/gi,
+    /(\d+)\s*[:=]\s*(\d+)\s*(?:คะแนน|เสียง|votes?)?/gi,
+    /(?:ผู้สมัคร|candidate)\s*(\d+)[:\s]+(\d+)/gi,
+    /No\.?\s*(\d+)[:\s]+(\d+)/gi
+  ];
+
+  const seenCandidates = new Set<number>();
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const candidateNum = parseInt(match[1]);
+      const voteCount = parseInt(match[2]);
+      
+      if (!seenCandidates.has(candidateNum) && candidateNum > 0 && candidateNum < 100) {
+        seenCandidates.add(candidateNum);
+        votes.push({
+          candidateName: `ผู้สมัครหมายเลข ${candidateNum}`,
+          candidateNumber: candidateNum,
+          voteCount: voteCount,
+          confidence: 70
+        });
+      }
+    }
+  }
+
+  // Sort by candidate number
+  votes.sort((a, b) => a.candidateNumber - b.candidateNumber);
+
+  // Extract station code
+  const stationMatch = text.match(/(?:หน่วย|station|รหัส)[:\s]*([A-Z0-9\-]+)/i);
+  
+  // Extract voter/ballot counts
+  const voterMatch = text.match(/(?:ผู้มีสิทธิ์|voters?|จำนวนผู้)[:\s]*(\d+)/i);
+  const ballotMatch = text.match(/(?:บัตร|ballots?|ใช้สิทธิ์)[:\s]*(\d+)/i);
+  const spoiledMatch = text.match(/(?:บัตรเสีย|spoiled|เสีย)[:\s]*(\d+)/i);
+
+  return {
+    success: votes.length > 0,
+    stationCode: stationMatch ? stationMatch[1] : undefined,
+    totalVoters: voterMatch ? parseInt(voterMatch[1]) : 0,
+    totalBallots: ballotMatch ? parseInt(ballotMatch[1]) : 0,
+    spoiledBallots: spoiledMatch ? parseInt(spoiledMatch[1]) : 0,
+    votes,
+    rawText: text,
+    error: votes.length === 0 ? 'ไม่สามารถอ่านข้อมูลคะแนนจากภาพได้ กรุณากรอกข้อมูลด้วยตนเอง' : undefined,
+    processingTime: Date.now() - startTime
+  };
 }
 
 /**

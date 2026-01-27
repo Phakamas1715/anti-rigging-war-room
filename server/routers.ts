@@ -1283,9 +1283,9 @@ export const appRouter = router({
       }),
   }),
 
-  // ============ OCR (DEEPSEEK VISION) ============
+  // ============ OCR (DEEPSEEK VISION / HUGGING FACE) ============
   ocr: router({
-    // Analyze vote counting board image
+    // Analyze vote counting board image using DeepSeek API
     analyze: protectedProcedure
       .input(z.object({
         imageUrl: z.string(),
@@ -1298,7 +1298,7 @@ export const appRouter = router({
         return { ...result, validation };
       }),
 
-    // Analyze with base64 image
+    // Analyze with base64 image using DeepSeek API
     analyzeBase64: protectedProcedure
       .input(z.object({
         base64Image: z.string(),
@@ -1309,6 +1309,19 @@ export const appRouter = router({
         const { analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
         const dataUrl = base64ToDataUrl(input.base64Image, input.mimeType || 'image/jpeg');
         const result = await analyzeVoteCountingBoard(dataUrl, input.apiKey);
+        const validation = validateOcrResult(result);
+        return { ...result, validation };
+      }),
+
+    // Analyze with Hugging Face DeepSeek-OCR model
+    analyzeWithHF: protectedProcedure
+      .input(z.object({
+        base64Image: z.string(),
+        hfToken: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { analyzeWithHuggingFace, validateOcrResult } = await import('./deepseekOcr');
+        const result = await analyzeWithHuggingFace(input.base64Image, input.hfToken);
         const validation = validateOcrResult(result);
         return { ...result, validation };
       }),

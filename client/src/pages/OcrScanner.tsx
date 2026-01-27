@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Camera, Upload, Scan, CheckCircle, AlertTriangle, XCircle,
   ArrowLeft, Image, Loader2, Edit, Send, RefreshCw, Eye,
-  FileText, Sparkles, Zap, Settings, Key
+  FileText, Sparkles, Zap, Settings, Key, Cloud
 } from "lucide-react";
 
 interface VoteCount {
@@ -42,7 +43,9 @@ interface OcrResult {
 
 export default function OcrScanner() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const [apiKey, setApiKey] = useState("");
+  const [apiProvider, setApiProvider] = useState<"huggingface" | "deepseek">("huggingface");
+  const [hfToken, setHfToken] = useState("");
+  const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -55,8 +58,9 @@ export default function OcrScanner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // OCR mutation
-  const ocrMutation = trpc.ocr.analyzeBase64.useMutation();
+  // OCR mutations
+  const ocrDeepseekMutation = trpc.ocr.analyzeBase64.useMutation();
+  const ocrHfMutation = trpc.ocr.analyzeWithHF.useMutation();
   const demoQuery = trpc.ocr.testDemo.useQuery(undefined, { enabled: false });
 
   const handlePhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,7 +87,14 @@ export default function OcrScanner() {
       return;
     }
 
-    if (!apiKey) {
+    // Check API key based on provider
+    if (apiProvider === "huggingface" && !hfToken) {
+      setShowApiKeyInput(true);
+      toast.error("กรุณาใส่ Hugging Face Token");
+      return;
+    }
+
+    if (apiProvider === "deepseek" && !deepseekApiKey) {
       setShowApiKeyInput(true);
       toast.error("กรุณาใส่ DeepSeek API Key");
       return;
@@ -91,11 +102,20 @@ export default function OcrScanner() {
 
     setIsProcessing(true);
     try {
-      const result = await ocrMutation.mutateAsync({
-        base64Image: photoBase64,
-        mimeType: photoMimeType || "image/jpeg",
-        apiKey,
-      });
+      let result: OcrResult;
+
+      if (apiProvider === "huggingface") {
+        result = await ocrHfMutation.mutateAsync({
+          base64Image: photoBase64,
+          hfToken,
+        });
+      } else {
+        result = await ocrDeepseekMutation.mutateAsync({
+          base64Image: photoBase64,
+          mimeType: photoMimeType || "image/jpeg",
+          apiKey: deepseekApiKey,
+        });
+      }
 
       setOcrResult(result);
       setEditedVotes(result.votes || []);
@@ -159,30 +179,21 @@ export default function OcrScanner() {
         <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
           <div className="container flex items-center h-14">
             <Link href="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                กลับหน้าหลัก
               </Button>
             </Link>
-            <h1 className="text-lg font-bold ml-2">OCR Scanner</h1>
           </div>
         </header>
-
-        <main className="container py-8">
-          <Card className="max-w-md mx-auto bg-card/50 border-border/50">
-            <CardHeader className="text-center">
-              <Scan className="h-16 w-16 mx-auto text-primary mb-4" />
-              <CardTitle>เข้าสู่ระบบเพื่อใช้งาน OCR</CardTitle>
-              <CardDescription>
-                ระบบอ่านตัวเลขจากกระดานนับคะแนนอัตโนมัติ
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <a href={getLoginUrl()}>เข้าสู่ระบบ</a>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
+        <div className="container py-12 text-center">
+          <Scan className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-2xl font-bold mb-2">OCR Scanner</h2>
+          <p className="text-muted-foreground mb-6">กรุณาเข้าสู่ระบบเพื่อใช้งาน OCR Scanner</p>
+          <Button asChild>
+            <a href={getLoginUrl()}>เข้าสู่ระบบ</a>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -192,376 +203,438 @@ export default function OcrScanner() {
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
             <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Dashboard
               </Button>
             </Link>
-            <h1 className="text-lg font-bold ml-2 flex items-center gap-2">
-              <Scan className="h-5 w-5 text-primary" />
-              OCR Scanner
-            </h1>
+            <div className="flex items-center gap-2">
+              <Scan className="w-5 h-5 text-primary" />
+              <span className="font-semibold">OCR Scanner</span>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-          >
-            <Key className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            >
+              <Key className="w-4 h-4 mr-2" />
+              API Settings
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="container py-6 space-y-6">
-        {/* API Key Input */}
-        {showApiKeyInput && (
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                DeepSeek API Key
-              </CardTitle>
-              <CardDescription>
-                ใส่ API Key จาก platform.deepseek.com เพื่อใช้งาน OCR
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder="sk-..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => setShowApiKeyInput(false)}
-                >
-                  บันทึก
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                API Key จะถูกเก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      <main className="container py-6">
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Left Column - Image Capture */}
+          <div className="space-y-6">
+            {/* API Key Settings */}
+            {showApiKeyInput && (
+              <Card className="border-primary/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    API Settings
+                  </CardTitle>
+                  <CardDescription>
+                    เลือก Provider และใส่ API Key สำหรับ OCR
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Tabs value={apiProvider} onValueChange={(v) => setApiProvider(v as "huggingface" | "deepseek")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="huggingface" className="flex items-center gap-2">
+                        <Cloud className="w-4 h-4" />
+                        Hugging Face
+                      </TabsTrigger>
+                      <TabsTrigger value="deepseek" className="flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        DeepSeek
+                      </TabsTrigger>
+                    </TabsList>
 
-        {/* Photo Capture Section */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5 text-primary" />
-              ถ่ายรูปกระดานนับคะแนน
-            </CardTitle>
-            <CardDescription>
-              ถ่ายรูปหรืออัปโหลดรูปภาพกระดานนับคะแนน ระบบจะอ่านตัวเลขให้อัตโนมัติ
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Photo Preview */}
-            {photoPreview ? (
-              <div className="relative">
-                <img
-                  src={photoPreview}
-                  alt="Preview"
-                  className="w-full rounded-lg border border-border/50"
-                />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setPhotoPreview(null);
-                    setPhotoBase64(null);
-                    setOcrResult(null);
-                    setEditedVotes([]);
-                  }}
-                >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  ลบ
-                </Button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center">
-                <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  ยังไม่มีรูปภาพ
-                </p>
-              </div>
-            )}
-
-            {/* Capture Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="h-12"
-                onClick={() => cameraInputRef.current?.click()}
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                ถ่ายรูป
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-5 w-5 mr-2" />
-                อัปโหลด
-              </Button>
-            </div>
-
-            {/* Hidden file inputs */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handlePhotoCapture}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoCapture}
-            />
-
-            {/* OCR Button */}
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 h-12 bg-primary hover:bg-primary/90"
-                onClick={handleOcrProcess}
-                disabled={!photoBase64 || isProcessing}
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    กำลังประมวลผล...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    อ่านด้วย AI (DeepSeek)
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12"
-                onClick={handleDemoOcr}
-                disabled={isProcessing}
-              >
-                <Zap className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* OCR Results */}
-        {ocrResult && (
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  ผลการอ่าน OCR
-                </CardTitle>
-                {ocrResult.success ? (
-                  <Badge className="bg-green-500/20 text-green-400">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    สำเร็จ
-                  </Badge>
-                ) : (
-                  <Badge className="bg-red-500/20 text-red-400">
-                    <XCircle className="h-3 w-3 mr-1" />
-                    ล้มเหลว
-                  </Badge>
-                )}
-              </div>
-              {ocrResult.processingTime && (
-                <CardDescription>
-                  ใช้เวลา {ocrResult.processingTime}ms
-                </CardDescription>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {ocrResult.success ? (
-                <>
-                  {/* Station Info */}
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">รหัสหน่วย</Label>
-                      <p className="font-mono font-bold">{ocrResult.stationCode || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">ผู้มีสิทธิ์</Label>
-                      <p className="font-bold">{ocrResult.totalVoters?.toLocaleString() || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">บัตรที่ใช้</Label>
-                      <p className="font-bold">{ocrResult.totalBallots?.toLocaleString() || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">บัตรเสีย</Label>
-                      <p className="font-bold">{ocrResult.spoiledBallots?.toLocaleString() || "-"}</p>
-                    </div>
-                  </div>
-
-                  {/* Validation Warnings */}
-                  {ocrResult.validation?.warnings && ocrResult.validation.warnings.length > 0 && (
-                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                      <div className="flex items-center gap-2 text-yellow-500 mb-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span className="font-medium">คำเตือน</span>
+                    <TabsContent value="huggingface" className="space-y-3 mt-4">
+                      <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <p className="text-sm text-blue-400">
+                          <strong>Hugging Face DeepSeek-OCR</strong> - ใช้โมเดล deepseek-ai/DeepSeek-OCR ผ่าน Inference API
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          รับ Token ฟรีได้ที่ huggingface.co/settings/tokens
+                        </p>
                       </div>
-                      <ul className="text-sm text-yellow-400 space-y-1">
-                        {ocrResult.validation.warnings.map((w, i) => (
-                          <li key={i}>• {w}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  {/* Vote Counts */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="font-medium">คะแนนผู้สมัคร</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsEditing(!isEditing)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        {isEditing ? "เสร็จสิ้น" : "แก้ไข"}
-                      </Button>
-                    </div>
-
-                    {editedVotes.map((vote, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                          {vote.candidateNumber}
-                        </div>
-                        <div className="flex-1">
-                          {isEditing ? (
-                            <Input
-                              value={vote.candidateName}
-                              onChange={(e) => handleVoteEdit(index, "candidateName", e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          ) : (
-                            <p className="font-medium">{vote.candidateName}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={vote.voteCount}
-                              onChange={(e) => handleVoteEdit(index, "voteCount", e.target.value)}
-                              className="h-8 w-20 text-right"
-                            />
-                          ) : (
-                            <p className="text-xl font-bold">{vote.voteCount.toLocaleString()}</p>
-                          )}
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className={`text-xs ${getConfidenceColor(vote.confidence)}`}>
-                              {vote.confidence}%
-                            </span>
-                            {getConfidenceBadge(vote.confidence)}
-                          </div>
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hfToken">Hugging Face Token</Label>
+                        <Input
+                          id="hfToken"
+                          type="password"
+                          placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={hfToken}
+                          onChange={(e) => setHfToken(e.target.value)}
+                        />
                       </div>
-                    ))}
+                    </TabsContent>
 
-                    {/* Total */}
-                    <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/30">
-                      <span className="font-medium">รวมคะแนน</span>
-                      <span className="text-2xl font-bold text-primary">
-                        {totalVotes.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                    <TabsContent value="deepseek" className="space-y-3 mt-4">
+                      <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                        <p className="text-sm text-purple-400">
+                          <strong>DeepSeek Vision API</strong> - ใช้ DeepSeek Chat API พร้อม Vision
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          รับ API Key ได้ที่ platform.deepseek.com
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="deepseekKey">DeepSeek API Key</Label>
+                        <Input
+                          id="deepseekKey"
+                          type="password"
+                          placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={deepseekApiKey}
+                          onChange={(e) => setDeepseekApiKey(e.target.value)}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-4">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        setOcrResult(null);
-                        setEditedVotes([]);
-                        setPhotoPreview(null);
-                        setPhotoBase64(null);
-                      }}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      สแกนใหม่
-                    </Button>
-                    <Button className="flex-1">
-                      <Send className="h-4 w-4 mr-2" />
-                      ส่งข้อมูล
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <XCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
-                  <p className="text-red-400 mb-2">ไม่สามารถอ่านข้อมูลได้</p>
-                  <p className="text-sm text-muted-foreground">{ocrResult.error}</p>
                   <Button
                     variant="outline"
-                    className="mt-4"
-                    onClick={() => setOcrResult(null)}
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setShowApiKeyInput(false)}
                   >
-                    ลองใหม่
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    บันทึกการตั้งค่า
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Image Capture Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="w-5 h-5" />
+                  ถ่ายรูปกระดานนับคะแนน
+                </CardTitle>
+                <CardDescription>
+                  ถ่ายรูปหรืออัปโหลดรูปภาพกระดานนับคะแนนเพื่อให้ AI อ่านข้อมูลอัตโนมัติ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Hidden file inputs */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handlePhotoCapture}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoCapture}
+                />
+
+                {/* Photo preview */}
+                {photoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={photoPreview}
+                      alt="Preview"
+                      className="w-full rounded-lg border border-border"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setPhotoBase64(null);
+                        setOcrResult(null);
+                        setEditedVotes([]);
+                      }}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      ลบรูป
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                    <Image className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground mb-4">
+                      ยังไม่มีรูปภาพ
+                    </p>
+                  </div>
+                )}
+
+                {/* Capture buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => cameraInputRef.current?.click()}
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    ถ่ายรูป
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    อัปโหลด
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Instructions */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader>
-            <CardTitle className="text-base">วิธีใช้งาน</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                1
-              </div>
-              <p>ถ่ายรูปกระดานนับคะแนนให้ชัดเจน ตัวเลขต้องอ่านออก</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                2
-              </div>
-              <p>กดปุ่ม "อ่านด้วย AI" เพื่อให้ระบบวิเคราะห์รูปภาพ</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                3
-              </div>
-              <p>ตรวจสอบผลลัพธ์และแก้ไขหากจำเป็น (ดูค่าความมั่นใจ)</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                4
-              </div>
-              <p>กดส่งข้อมูลเพื่อบันทึกเข้าระบบ PVT</p>
-            </div>
-          </CardContent>
-        </Card>
+                <Separator />
+
+                {/* OCR Process button */}
+                <div className="space-y-3">
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleOcrProcess}
+                    disabled={!photoBase64 || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        กำลังประมวลผล...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        วิเคราะห์ด้วย AI ({apiProvider === "huggingface" ? "HF" : "DeepSeek"})
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleDemoOcr}
+                    disabled={isProcessing}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    ทดสอบด้วยข้อมูลตัวอย่าง
+                  </Button>
+                </div>
+
+                {/* Current API Provider indicator */}
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <span>Provider:</span>
+                  <Badge variant="outline">
+                    {apiProvider === "huggingface" ? (
+                      <>
+                        <Cloud className="w-3 h-3 mr-1" />
+                        Hugging Face
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3 h-3 mr-1" />
+                        DeepSeek
+                      </>
+                    )}
+                  </Badge>
+                  {(apiProvider === "huggingface" ? hfToken : deepseekApiKey) ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - OCR Results */}
+          <div className="space-y-6">
+            {/* Results Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    ผลการอ่าน OCR
+                  </span>
+                  {ocrResult && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditing(!isEditing)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      {isEditing ? "ดูผลลัพธ์" : "แก้ไข"}
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!ocrResult ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Scan className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>ยังไม่มีผลการอ่าน</p>
+                    <p className="text-sm">ถ่ายรูปและกดวิเคราะห์เพื่อเริ่มต้น</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
+                      {ocrResult.success ? (
+                        <Badge className="bg-green-500/20 text-green-400">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          สำเร็จ
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-red-500/20 text-red-400">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          ล้มเหลว
+                        </Badge>
+                      )}
+                      {ocrResult.processingTime && (
+                        <span className="text-xs text-muted-foreground">
+                          ({ocrResult.processingTime}ms)
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Error message */}
+                    {ocrResult.error && (
+                      <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <p className="text-sm text-red-400">{ocrResult.error}</p>
+                      </div>
+                    )}
+
+                    {/* Station info */}
+                    {ocrResult.success && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-muted-foreground">รหัสหน่วย</p>
+                            <p className="font-medium">{ocrResult.stationCode || "-"}</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-muted-foreground">ผู้มีสิทธิ์</p>
+                            <p className="font-medium">{ocrResult.totalVoters?.toLocaleString() || "-"}</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-muted-foreground">บัตรที่ใช้</p>
+                            <p className="font-medium">{ocrResult.totalBallots?.toLocaleString() || "-"}</p>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-muted-foreground">บัตรเสีย</p>
+                            <p className="font-medium">{ocrResult.spoiledBallots?.toLocaleString() || "-"}</p>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Votes */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium">คะแนนผู้สมัคร</h4>
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              {editedVotes.map((vote, index) => (
+                                <div key={index} className="grid grid-cols-4 gap-2 items-center">
+                                  <Input
+                                    type="number"
+                                    value={vote.candidateNumber}
+                                    onChange={(e) => handleVoteEdit(index, "candidateNumber", e.target.value)}
+                                    className="h-8"
+                                    placeholder="เบอร์"
+                                  />
+                                  <Input
+                                    value={vote.candidateName}
+                                    onChange={(e) => handleVoteEdit(index, "candidateName", e.target.value)}
+                                    className="h-8 col-span-2"
+                                    placeholder="ชื่อ"
+                                  />
+                                  <Input
+                                    type="number"
+                                    value={vote.voteCount}
+                                    onChange={(e) => handleVoteEdit(index, "voteCount", e.target.value)}
+                                    className="h-8"
+                                    placeholder="คะแนน"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {editedVotes.map((vote, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold">
+                                      {vote.candidateNumber}
+                                    </span>
+                                    <span>{vote.candidateName}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-lg">
+                                      {vote.voteCount.toLocaleString()}
+                                    </span>
+                                    {getConfidenceBadge(vote.confidence)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Total */}
+                          <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                            <span className="font-medium">รวมคะแนน</span>
+                            <span className="font-bold text-xl">{totalVotes.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Validation warnings */}
+                        {ocrResult.validation && ocrResult.validation.warnings.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-yellow-500 flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4" />
+                              คำเตือน
+                            </h4>
+                            {ocrResult.validation.warnings.map((warning, index) => (
+                              <div
+                                key={index}
+                                className="p-2 bg-yellow-500/10 rounded border border-yellow-500/20 text-sm text-yellow-400"
+                              >
+                                {warning}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Submit button */}
+            {ocrResult?.success && (
+              <Card>
+                <CardContent className="pt-6">
+                  <Button className="w-full" size="lg">
+                    <Send className="w-4 h-4 mr-2" />
+                    ส่งข้อมูลเข้าระบบ PVT
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    ข้อมูลจะถูกส่งไปยังระบบ Parallel Vote Tabulation
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

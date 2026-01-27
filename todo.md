@@ -151,3 +151,12 @@
 - [x] Flag suspicious results (e.g., total > registered voters)
 - [ ] Store original image alongside OCR results for audit
 - [ ] OCR history and accuracy tracking
+
+## Update - Phase 5.1: DeepSeek-OCR Hugging Face Model
+
+### Model Integration
+- [x] Hugging Face Inference API integration
+- [x] Create API endpoint for HF DeepSeek-OCR
+- [x] Update frontend to support both HF and DeepSeek providers
+- [x] Provider selection UI in OCR Scanner
+- [x] Token configuration for Hugging Face
