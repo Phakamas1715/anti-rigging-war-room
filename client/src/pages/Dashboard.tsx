@@ -18,7 +18,8 @@ import {
   Users,
   Smartphone,
   Settings,
-  Scan
+  Scan,
+  Layers
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -217,6 +218,21 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-bold text-white">OCR Scanner</h3>
                     <p className="text-sm text-slate-400">อ่านตัวเลขจากกระดานนับคะแนนด้วย AI</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/batch-ocr">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-indigo-500/50 transition-colors cursor-pointer h-full">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-500/10 rounded-lg">
+                    <Layers className="h-8 w-8 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">Batch OCR</h3>
+                    <p className="text-sm text-slate-400">สแกนหลายภาพพร้อมกัน</p>
                   </div>
                 </div>
               </CardContent>

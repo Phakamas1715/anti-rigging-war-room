@@ -160,3 +160,32 @@
 - [x] Update frontend to support both HF and DeepSeek providers
 - [x] Provider selection UI in OCR Scanner
 - [x] Token configuration for Hugging Face
+
+## New Features - Phase 6: Batch OCR System
+
+### Multi-file Upload
+- [x] Drag and drop multiple files
+- [x] File type validation (jpg, png, webp)
+- [x] File size limit check
+- [x] Preview thumbnails for all uploaded files
+- [x] Remove individual files from queue
+
+### Queue Processing
+- [x] Sequential OCR processing
+- [ ] Concurrent processing (max 3 at a time)
+- [x] Retry failed items
+- [x] Cancel processing option
+
+### Progress Tracking
+- [x] Overall progress bar
+- [x] Individual file status (pending/processing/done/error)
+- [x] Processing time per file
+- [x] Error messages for failed items
+
+### Batch Results
+- [x] Summary statistics (total/success/failed)
+- [x] Results table with all extracted data
+- [ ] Edit individual results
+- [x] Export to CSV
+- [ ] Export to Excel
+- [ ] Bulk submit to PVT system

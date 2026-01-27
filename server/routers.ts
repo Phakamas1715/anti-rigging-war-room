@@ -1347,6 +1347,97 @@ export const appRouter = router({
         },
       };
     }),
+
+    // Batch OCR - Process single image in batch (called multiple times from frontend)
+    batchProcessSingle: protectedProcedure
+      .input(z.object({
+        fileId: z.string(),
+        fileName: z.string(),
+        base64Image: z.string(),
+        provider: z.enum(['huggingface', 'deepseek']),
+        apiKey: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const startTime = Date.now();
+        try {
+          const { analyzeWithHuggingFace, analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
+          
+          let result;
+          if (input.provider === 'huggingface') {
+            result = await analyzeWithHuggingFace(input.base64Image, input.apiKey);
+          } else {
+            const dataUrl = base64ToDataUrl(input.base64Image, 'image/jpeg');
+            result = await analyzeVoteCountingBoard(dataUrl, input.apiKey);
+          }
+          
+          const validation = validateOcrResult(result);
+          const processingTime = Date.now() - startTime;
+          
+          return {
+            fileId: input.fileId,
+            fileName: input.fileName,
+            success: result.success,
+            data: { ...result, validation },
+            processingTime,
+            error: null,
+          };
+        } catch (error: any) {
+          return {
+            fileId: input.fileId,
+            fileName: input.fileName,
+            success: false,
+            data: null,
+            processingTime: Date.now() - startTime,
+            error: error.message || 'OCR processing failed',
+          };
+        }
+      }),
+
+    // Generate demo batch results
+    batchDemo: publicProcedure
+      .input(z.object({
+        count: z.number().min(1).max(20).default(5),
+      }))
+      .query(({ input }) => {
+        const results = [];
+        for (let i = 0; i < input.count; i++) {
+          const stationNum = String(i + 1).padStart(3, '0');
+          const totalVoters = 400 + Math.floor(Math.random() * 200);
+          const totalBallots = Math.floor(totalVoters * (0.7 + Math.random() * 0.25));
+          const spoiledBallots = Math.floor(Math.random() * 10);
+          const validBallots = totalBallots - spoiledBallots;
+          
+          // Generate random votes for 3 candidates
+          const vote1 = Math.floor(validBallots * (0.3 + Math.random() * 0.3));
+          const vote2 = Math.floor((validBallots - vote1) * (0.4 + Math.random() * 0.3));
+          const vote3 = validBallots - vote1 - vote2;
+          
+          results.push({
+            fileId: `demo-${i}`,
+            fileName: `station_${stationNum}.jpg`,
+            success: Math.random() > 0.1, // 90% success rate
+            data: {
+              success: true,
+              stationCode: `DEMO-${stationNum}`,
+              totalVoters,
+              totalBallots,
+              spoiledBallots,
+              votes: [
+                { candidateNumber: 1, candidateName: 'ผู้สมัครหมายเลข 1', voteCount: vote1, confidence: 85 + Math.floor(Math.random() * 15) },
+                { candidateNumber: 2, candidateName: 'ผู้สมัครหมายเลข 2', voteCount: vote2, confidence: 85 + Math.floor(Math.random() * 15) },
+                { candidateNumber: 3, candidateName: 'ผู้สมัครหมายเลข 3', voteCount: vote3, confidence: 85 + Math.floor(Math.random() * 15) },
+              ],
+              validation: {
+                isValid: true,
+                warnings: [],
+              },
+            },
+            processingTime: 1000 + Math.floor(Math.random() * 2000),
+            error: null,
+          });
+        }
+        return results;
+      }),
   }),
 });
 
