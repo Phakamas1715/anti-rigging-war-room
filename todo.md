@@ -128,3 +128,26 @@
 - [x] Klimek, PVT, Network Hub, Benford, Spatial alerts
 - [x] Daily summary report
 - [x] Settings page for webhook configuration
+
+## New Features - Phase 5: OCR System for Vote Counting
+
+### OCR Engine (DeepSeek Vision)
+- [x] DeepSeek Vision API integration for image analysis
+- [x] Structured prompt for extracting vote counts from tally board images
+- [x] Multi-candidate vote extraction
+- [x] Confidence score calculation for each extracted number
+- [x] Error handling for unclear or damaged images
+
+### OCR Frontend Integration
+- [x] Image upload with OCR trigger in Volunteer App
+- [x] Real-time OCR processing status indicator
+- [x] Auto-fill vote count form with OCR results
+- [x] Side-by-side view: original image vs extracted data
+- [x] Manual correction interface for low-confidence results
+- [ ] Confirmation dialog before submission
+
+### OCR Data Validation
+- [x] Cross-check total votes vs sum of individual candidates
+- [x] Flag suspicious results (e.g., total > registered voters)
+- [ ] Store original image alongside OCR results for audit
+- [ ] OCR history and accuracy tracking

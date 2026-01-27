@@ -1282,6 +1282,59 @@ export const appRouter = router({
         return { qrDataUrl, url: input.url };
       }),
   }),
+
+  // ============ OCR (DEEPSEEK VISION) ============
+  ocr: router({
+    // Analyze vote counting board image
+    analyze: protectedProcedure
+      .input(z.object({
+        imageUrl: z.string(),
+        apiKey: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { analyzeVoteCountingBoard, validateOcrResult } = await import('./deepseekOcr');
+        const result = await analyzeVoteCountingBoard(input.imageUrl, input.apiKey);
+        const validation = validateOcrResult(result);
+        return { ...result, validation };
+      }),
+
+    // Analyze with base64 image
+    analyzeBase64: protectedProcedure
+      .input(z.object({
+        base64Image: z.string(),
+        mimeType: z.string().optional(),
+        apiKey: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
+        const dataUrl = base64ToDataUrl(input.base64Image, input.mimeType || 'image/jpeg');
+        const result = await analyzeVoteCountingBoard(dataUrl, input.apiKey);
+        const validation = validateOcrResult(result);
+        return { ...result, validation };
+      }),
+
+    // Test OCR with demo image
+    testDemo: publicProcedure.query(async () => {
+      return {
+        success: true,
+        stationCode: 'DEMO-001',
+        totalVoters: 500,
+        totalBallots: 425,
+        spoiledBallots: 5,
+        votes: [
+          { candidateNumber: 1, candidateName: 'ผู้สมัครหมายเลข 1', voteCount: 180, confidence: 95 },
+          { candidateNumber: 2, candidateName: 'ผู้สมัครหมายเลข 2', voteCount: 150, confidence: 92 },
+          { candidateNumber: 3, candidateName: 'ผู้สมัครหมายเลข 3', voteCount: 90, confidence: 88 },
+        ],
+        rawText: 'Demo OCR Result',
+        processingTime: 1500,
+        validation: {
+          isValid: true,
+          warnings: [],
+        },
+      };
+    }),
+  }),
 });
 
 // ============ DEMO DATA GENERATORS ============

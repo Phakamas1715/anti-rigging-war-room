@@ -18,6 +18,7 @@ import ExportReport from "./pages/ExportReport";
 import VolunteerApp from "./pages/VolunteerApp";
 import AdminVolunteers from "./pages/AdminVolunteers";
 import Settings from "./pages/Settings";
+import OcrScanner from "./pages/OcrScanner";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
       <Route path={"/volunteer"} component={VolunteerApp} />
       <Route path={"/admin/volunteers"} component={AdminVolunteers} />
       <Route path={"/settings"} component={Settings} />
+      <Route path={"/ocr"} component={OcrScanner} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
