@@ -72,26 +72,36 @@ export default function BatchOcr() {
   const sendGapAlertMutation = trpc.batchPvt.sendGapAlert.useMutation();
   const checkGapQuery = trpc.batchPvt.checkGap.useQuery;
 
-  // Load saved settings from localStorage
-  useEffect(() => {
-    const savedDiscordUrl = localStorage.getItem('discordWebhookUrl');
-    const savedLineToken = localStorage.getItem('lineToken');
-    const savedGapThreshold = localStorage.getItem('gapThreshold');
-    const savedEnableGapAlert = localStorage.getItem('enableGapAlert');
-    
-    if (savedDiscordUrl) setDiscordWebhookUrl(savedDiscordUrl);
-    if (savedLineToken) setLineToken(savedLineToken);
-    if (savedGapThreshold) setGapThreshold(parseInt(savedGapThreshold));
-    if (savedEnableGapAlert) setEnableGapAlert(savedEnableGapAlert === 'true');
-  }, []);
+  // Load settings from database
+  const settingsQuery = trpc.settings.getGapAlertSettings.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const saveSettingsMutation = trpc.settings.saveGapAlertSettings.useMutation();
 
-  // Save settings to localStorage
+  // Load settings from database on mount
   useEffect(() => {
-    localStorage.setItem('discordWebhookUrl', discordWebhookUrl);
-    localStorage.setItem('lineToken', lineToken);
-    localStorage.setItem('gapThreshold', gapThreshold.toString());
-    localStorage.setItem('enableGapAlert', enableGapAlert.toString());
-  }, [discordWebhookUrl, lineToken, gapThreshold, enableGapAlert]);
+    if (settingsQuery.data) {
+      setDiscordWebhookUrl(settingsQuery.data.discordWebhook || '');
+      setLineToken(settingsQuery.data.lineToken || '');
+      setGapThreshold(settingsQuery.data.gapThreshold || 10);
+      setEnableGapAlert(settingsQuery.data.gapAlertEnabled || false);
+    }
+  }, [settingsQuery.data]);
+
+  // Save settings to database when changed
+  const saveSettingsToDb = async () => {
+    try {
+      await saveSettingsMutation.mutateAsync({
+        discordWebhook: discordWebhookUrl,
+        lineToken: lineToken,
+        gapThreshold: gapThreshold,
+        gapAlertEnabled: enableGapAlert,
+      });
+      toast.success('บันทึกการตั้งค่าเรียบร้อย');
+    } catch (error) {
+      toast.error('ไม่สามารถบันทึกการตั้งค่าได้');
+    }
+  };
 
   // Calculate statistics
   const stats = {
@@ -662,6 +672,18 @@ export default function BatchOcr() {
                         แจ้งเตือนเมื่อพบความแตกต่างมากกว่า {gapThreshold} คะแนน
                       </p>
                     </div>
+                    
+                    <Button 
+                      onClick={saveSettingsToDb}
+                      disabled={saveSettingsMutation.isPending}
+                      className="mt-4"
+                    >
+                      {saveSettingsMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> กำลังบันทึก...</>
+                      ) : (
+                        <>บันทึกการตั้งค่า</>
+                      )}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -808,6 +830,27 @@ export default function BatchOcr() {
           <Button variant="outline" onClick={loadDemoData}>
             <Download className="w-4 h-4 mr-2" />
             ข้อมูลตัวอย่าง
+          </Button>
+
+          <Button variant="outline" onClick={async () => {
+            try {
+              const response = await fetch('/sample-vote-board.jpg');
+              const blob = await response.blob();
+              const file = new File([blob], 'sample-vote-board.jpg', { type: 'image/jpeg' });
+              const preview = URL.createObjectURL(blob);
+              setFiles([{
+                id: 'test-ocr-' + Date.now(),
+                file,
+                preview,
+                status: 'pending',
+              }]);
+              toast.success('โหลดภาพตัวอย่างแล้ว กด "เริ่มประมวลผล OCR" เพื่อทดสอบ');
+            } catch (error) {
+              toast.error('ไม่สามารถโหลดภาพตัวอย่าง');
+            }
+          }}>
+            <ImageIcon className="w-4 h-4 mr-2" />
+            ทดสอบ OCR
           </Button>
 
           {files.length > 0 && (

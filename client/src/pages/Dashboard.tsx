@@ -24,6 +24,7 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: alerts } = trpc.dashboard.alerts.useQuery();
 
@@ -338,7 +339,8 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Analysis Summary */}
+{/* Analysis Summary - Admin Only */}
+        {isAdmin && (
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <CardTitle className="text-white">สูตรการวิเคราะห์ที่ใช้</CardTitle>
@@ -387,6 +389,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        )}
       </main>
     </div>
   );

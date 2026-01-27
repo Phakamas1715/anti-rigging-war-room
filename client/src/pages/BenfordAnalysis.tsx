@@ -6,8 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link } from "wouter";
 import { ArrowLeft, Activity, AlertTriangle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function BenfordAnalysis() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [inputData, setInputData] = useState("");
   const [result, setResult] = useState<{
     expectedFreq: number[];
@@ -190,7 +193,8 @@ export default function BenfordAnalysis() {
           </Card>
         </div>
 
-        {/* Formula Explanation */}
+{/* Formula Explanation - Admin Only */}
+        {isAdmin && (
         <Card className="bg-slate-900/50 border-slate-800 mt-8">
           <CardHeader>
             <CardTitle className="text-white">สูตร Second Digit Benford's Law (2BL)</CardTitle>
@@ -211,6 +215,7 @@ export default function BenfordAnalysis() {
             </div>
           </CardContent>
         </Card>
+        )}
       </main>
     </div>
   );

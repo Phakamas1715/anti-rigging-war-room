@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { ArrowLeft, AlertTriangle, CheckCircle, BarChart3 } from "lucide-react";
 import { useMemo } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function KlimekAnalysis() {
   const { data: analysis, isLoading } = trpc.klimek.analyze.useQuery();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   // Generate heatmap colors
   const heatmapColors = useMemo(() => {
@@ -208,6 +211,7 @@ export default function KlimekAnalysis() {
             </CardContent>
           </Card>
 
+{isAdmin && (
           <Card className="bg-slate-900/50 border-slate-800">
             <CardHeader>
               <CardTitle className="text-white">สูตรการคำนวณ</CardTitle>
@@ -223,6 +227,7 @@ export default function KlimekAnalysis() {
               </div>
             </CardContent>
           </Card>
+)}
         </div>
       </main>
     </div>
