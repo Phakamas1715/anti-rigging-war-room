@@ -99,3 +99,32 @@
 - [x] Submission history
 - [ ] Station coverage map
 - [x] Progress statistics
+
+## New Features - Phase 4: Offline Mode, LINE Notify, QR Code
+
+### Offline Mode (PWA)
+- [x] Service Worker for caching static assets
+- [x] IndexedDB for storing offline submissions
+- [x] Offline detection and status indicator
+- [x] Auto-sync when back online
+- [x] PWA manifest for installable app
+
+### LINE Notify Integration
+- [x] LINE Notify API integration
+- [x] Alert notification when Alpha > 5%
+- [x] Alert notification when PVT gap detected
+- [x] Alert notification when suspicious hub detected
+- [x] Admin settings for LINE token configuration
+
+### QR Code System
+- [x] QR Code generation for volunteer registration link
+- [x] QR Code for specific polling station assignment
+- [x] Downloadable QR Code image
+- [x] QR Code display in admin dashboard
+
+### Discord Webhook Integration (Added)
+- [x] Discord Webhook API integration
+- [x] Rich embed alerts with severity colors
+- [x] Klimek, PVT, Network Hub, Benford, Spatial alerts
+- [x] Daily summary report
+- [x] Settings page for webhook configuration

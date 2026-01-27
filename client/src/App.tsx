@@ -17,6 +17,7 @@ import SpatialMap from "./pages/SpatialMap";
 import ExportReport from "./pages/ExportReport";
 import VolunteerApp from "./pages/VolunteerApp";
 import AdminVolunteers from "./pages/AdminVolunteers";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path={"/export"} component={ExportReport} />
       <Route path={"/volunteer"} component={VolunteerApp} />
       <Route path={"/admin/volunteers"} component={AdminVolunteers} />
+      <Route path={"/settings"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

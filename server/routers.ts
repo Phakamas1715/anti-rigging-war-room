@@ -1064,6 +1064,224 @@ export const appRouter = router({
       });
     }),
   }),
+
+  // ============ LINE NOTIFY ============
+  lineNotify: router({
+    // Test LINE Notify connection
+    test: protectedProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const { testLineNotify } = await import('./lineNotify');
+        const success = await testLineNotify(input.token);
+        return { success, message: success ? 'ส่งข้อความทดสอบสำเร็จ' : 'ไม่สามารถส่งข้อความได้' };
+      }),
+
+    // Send Klimek alert
+    sendKlimekAlert: protectedProcedure
+      .input(z.object({
+        token: z.string(),
+        alpha: z.number(),
+        beta: z.number(),
+        province: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendKlimekAlert } = await import('./lineNotify');
+        const success = await sendKlimekAlert(input.token, input.alpha, input.beta, input.province);
+        return { success };
+      }),
+
+    // Send PVT Gap alert
+    sendPVTAlert: protectedProcedure
+      .input(z.object({
+        token: z.string(),
+        gap: z.number(),
+        stationCode: z.string(),
+        ourSum: z.number(),
+        theirSum: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendPVTGapAlert } = await import('./lineNotify');
+        const success = await sendPVTGapAlert(input.token, input.gap, input.stationCode, input.ourSum, input.theirSum);
+        return { success };
+      }),
+
+    // Send Network Hub alert
+    sendHubAlert: protectedProcedure
+      .input(z.object({
+        token: z.string(),
+        hubId: z.string(),
+        connections: z.number(),
+        totalAmount: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendNetworkHubAlert } = await import('./lineNotify');
+        const success = await sendNetworkHubAlert(input.token, input.hubId, input.connections, input.totalAmount);
+        return { success };
+      }),
+  }),
+
+  // ============ DISCORD WEBHOOK ============
+  discord: router({
+    // Test Discord webhook connection
+    test: protectedProcedure
+      .input(z.object({ webhookUrl: z.string() }))
+      .mutation(async ({ input }) => {
+        const { testDiscordWebhook } = await import('./discordNotify');
+        const success = await testDiscordWebhook(input.webhookUrl);
+        return { success, message: success ? 'ส่งข้อความทดสอบสำเร็จ' : 'ไม่สามารถส่งข้อความได้' };
+      }),
+
+    // Send Klimek alert via Discord
+    sendKlimekAlert: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        alpha: z.number(),
+        beta: z.number(),
+        province: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendKlimekAlert } = await import('./discordNotify');
+        const success = await sendKlimekAlert(input.webhookUrl, input.alpha, input.beta, input.province);
+        return { success };
+      }),
+
+    // Send PVT Gap alert via Discord
+    sendPVTAlert: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        gap: z.number(),
+        stationCode: z.string(),
+        ourSum: z.number(),
+        theirSum: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendPVTGapAlert } = await import('./discordNotify');
+        const success = await sendPVTGapAlert(input.webhookUrl, input.gap, input.stationCode, input.ourSum, input.theirSum);
+        return { success };
+      }),
+
+    // Send Network Hub alert via Discord
+    sendHubAlert: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        hubId: z.string(),
+        connections: z.number(),
+        totalAmount: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendNetworkHubAlert } = await import('./discordNotify');
+        const success = await sendNetworkHubAlert(input.webhookUrl, input.hubId, input.connections, input.totalAmount);
+        return { success };
+      }),
+
+    // Send Benford alert via Discord
+    sendBenfordAlert: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        chiSquare: z.number(),
+        pValue: z.number(),
+        location: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendBenfordAlert } = await import('./discordNotify');
+        const success = await sendBenfordAlert(input.webhookUrl, input.chiSquare, input.pValue, input.location);
+        return { success };
+      }),
+
+    // Send Spatial alert via Discord
+    sendSpatialAlert: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        zScore: z.number(),
+        province: z.string(),
+        neighborAvg: z.number(),
+        provinceValue: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendSpatialAlert } = await import('./discordNotify');
+        const success = await sendSpatialAlert(input.webhookUrl, input.zScore, input.province, input.neighborAvg, input.provinceValue);
+        return { success };
+      }),
+
+    // Send daily summary via Discord
+    sendDailySummary: protectedProcedure
+      .input(z.object({
+        webhookUrl: z.string(),
+        totalStations: z.number(),
+        analyzedStations: z.number(),
+        alertsToday: z.number(),
+        criticalAlerts: z.number(),
+        klimekAlpha: z.number(),
+        pvtGap: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendDailySummary } = await import('./discordNotify');
+        const success = await sendDailySummary(input.webhookUrl, {
+          totalStations: input.totalStations,
+          analyzedStations: input.analyzedStations,
+          alertsToday: input.alertsToday,
+          criticalAlerts: input.criticalAlerts,
+          klimekAlpha: input.klimekAlpha,
+          pvtGap: input.pvtGap,
+        });
+        return { success };
+      }),
+  }),
+
+  // ============ QR CODE ============
+  qrCode: router({
+    // Generate QR code for volunteer registration
+    volunteerRegistration: publicProcedure
+      .input(z.object({ baseUrl: z.string() }))
+      .mutation(async ({ input }) => {
+        const QRCode = await import('qrcode');
+        const url = `${input.baseUrl}/volunteer`;
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          width: 400,
+          margin: 2,
+          color: { dark: '#ef4444', light: '#ffffff' },
+        });
+        return { qrDataUrl, url };
+      }),
+
+    // Generate QR code for specific station
+    stationAssignment: publicProcedure
+      .input(z.object({
+        baseUrl: z.string(),
+        stationCode: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const QRCode = await import('qrcode');
+        const url = `${input.baseUrl}/volunteer?station=${input.stationCode}`;
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          width: 400,
+          margin: 2,
+          color: { dark: '#ef4444', light: '#ffffff' },
+        });
+        return { qrDataUrl, url, stationCode: input.stationCode };
+      }),
+
+    // Generate QR code for any URL
+    custom: publicProcedure
+      .input(z.object({
+        url: z.string(),
+        size: z.number().optional(),
+        darkColor: z.string().optional(),
+        lightColor: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const QRCode = await import('qrcode');
+        const qrDataUrl = await QRCode.toDataURL(input.url, {
+          width: input.size || 400,
+          margin: 2,
+          color: {
+            dark: input.darkColor || '#000000',
+            light: input.lightColor || '#ffffff',
+          },
+        });
+        return { qrDataUrl, url: input.url };
+      }),
+  }),
 });
 
 // ============ DEMO DATA GENERATORS ============

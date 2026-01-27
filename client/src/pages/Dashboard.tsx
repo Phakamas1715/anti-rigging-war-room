@@ -16,7 +16,8 @@ import {
   FileText,
   Map,
   Users,
-  Smartphone
+  Smartphone,
+  Settings
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -279,6 +280,25 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-bold text-white">PVT Comparison</h3>
                     <p className="text-sm text-slate-400">เปรียบเทียบผลนับคู่ขนาน</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Settings Link */}
+        <div className="mb-8">
+          <Link href="/settings">
+            <Card className="bg-slate-900/50 border-slate-800 hover:border-indigo-500/50 transition-colors cursor-pointer">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-500/10 rounded-lg">
+                    <Settings className="h-8 w-8 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">ตั้งค่าระบบ</h3>
+                    <p className="text-sm text-slate-400">Discord Webhook, LINE Notify, QR Code</p>
                   </div>
                 </div>
               </CardContent>
