@@ -49,7 +49,7 @@ export default function BatchOcr() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [provider, setProvider] = useState<'huggingface' | 'deepseek'>('huggingface');
+  const [provider, setProvider] = useState<'huggingface' | 'deepseek' | 'gemini'>('gemini');
   const [apiKey, setApiKey] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
@@ -243,7 +243,8 @@ export default function BatchOcr() {
 
   // Process all files
   const processFiles = async () => {
-    if (!apiKey) {
+    // Gemini doesn't need API key, others do
+    if (provider !== 'gemini' && !apiKey) {
       toast.error('กรุณาใส่ API Key ก่อนเริ่มประมวลผล');
       setShowSettings(true);
       return;
@@ -539,23 +540,35 @@ export default function BatchOcr() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* OCR Provider Settings */}
-              <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek')}>
-                <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek' | 'gemini')}>
+                <TabsList className="grid w-full grid-cols-3 max-w-md">
+                  <TabsTrigger value="gemini" className="text-green-500 data-[state=active]:bg-green-500/20">✨ Gemini</TabsTrigger>
                   <TabsTrigger value="huggingface">Hugging Face</TabsTrigger>
                   <TabsTrigger value="deepseek">DeepSeek</TabsTrigger>
                 </TabsList>
                 <div className="mt-4 max-w-md">
-                  <Label htmlFor="apiKey">
-                    {provider === 'huggingface' ? 'Hugging Face Token' : 'DeepSeek API Key'}
-                  </Label>
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder={provider === 'huggingface' ? 'hf_xxxxxxxxxx' : 'sk-xxxxxxxxxx'}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="mt-1"
-                  />
+                  {provider === 'gemini' ? (
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                      <p className="text-sm text-green-500 font-medium">✅ พร้อมใช้งาน - ไม่ต้องใส่ API Key</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ใช้ Gemini 2.5 Flash Vision ที่ติดตั้งในระบบแล้ว
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Label htmlFor="apiKey">
+                        {provider === 'huggingface' ? 'Hugging Face Token' : 'DeepSeek API Key'}
+                      </Label>
+                      <Input
+                        id="apiKey"
+                        type="password"
+                        placeholder={provider === 'huggingface' ? 'hf_xxxxxxxxxx' : 'sk-xxxxxxxxxx'}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="mt-1"
+                      />
+                    </>
+                  )}
                 </div>
               </Tabs>
 

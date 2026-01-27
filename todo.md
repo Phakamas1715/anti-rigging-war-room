@@ -232,3 +232,12 @@
 ### Integration with Batch OCR
 - [x] Auto-trigger alert after bulk submit detects gaps
 - [x] Summary alert for multiple gaps in batch
+
+
+## New Features - Phase 7.2: Gemini Vision OCR
+
+### Gemini OCR Provider
+- [x] Add Gemini Vision API integration for OCR
+- [x] Add Gemini tab in OCR settings
+- [x] Use existing GEMINI_API_KEY from environment
+- [x] Update BatchOcr to support Gemini provider

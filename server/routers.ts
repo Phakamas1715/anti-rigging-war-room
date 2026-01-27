@@ -1355,23 +1355,32 @@ export const appRouter = router({
         fileId: z.string(),
         fileName: z.string(),
         base64Image: z.string(),
-        provider: z.enum(['huggingface', 'deepseek']),
-        apiKey: z.string(),
+        provider: z.enum(['huggingface', 'deepseek', 'gemini']),
+        apiKey: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const startTime = Date.now();
         try {
-          const { analyzeWithHuggingFace, analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
-          
           let result;
-          if (input.provider === 'huggingface') {
-            result = await analyzeWithHuggingFace(input.base64Image, input.apiKey);
+          let validation;
+          
+          if (input.provider === 'gemini') {
+            // Use built-in Gemini API (no API key needed)
+            const { analyzeWithGemini, validateOcrResult } = await import('./geminiOcr');
+            result = await analyzeWithGemini(input.base64Image);
+            validation = validateOcrResult(result);
           } else {
-            const dataUrl = base64ToDataUrl(input.base64Image, 'image/jpeg');
-            result = await analyzeVoteCountingBoard(dataUrl, input.apiKey);
+            const { analyzeWithHuggingFace, analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
+            
+            if (input.provider === 'huggingface') {
+              result = await analyzeWithHuggingFace(input.base64Image, input.apiKey || '');
+            } else {
+              const dataUrl = base64ToDataUrl(input.base64Image, 'image/jpeg');
+              result = await analyzeVoteCountingBoard(dataUrl, input.apiKey || '');
+            }
+            validation = validateOcrResult(result);
           }
           
-          const validation = validateOcrResult(result);
           const processingTime = Date.now() - startTime;
           
           return {
