@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
-import DashboardLayout from '@/components/DashboardLayout';
+import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,7 +106,7 @@ export default function VolunteerCodes() {
   };
 
   return (
-    <DashboardLayout>
+    <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -421,6 +421,6 @@ export default function VolunteerCodes() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </AdminLayout>
   );
 }

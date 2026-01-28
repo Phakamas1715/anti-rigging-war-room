@@ -4,7 +4,14 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+
+// Public Pages
 import Home from "./pages/Home";
+import VolunteerLogin from "./pages/VolunteerLogin";
+import Help from "./pages/Help";
+
+// Admin Pages (with AdminLayout)
+import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard";
 import KlimekAnalysis from "./pages/KlimekAnalysis";
 import BenfordAnalysis from "./pages/BenfordAnalysis";
@@ -15,20 +22,43 @@ import PVTComparison from "./pages/PVTComparison";
 import AdminImport from "./pages/AdminImport";
 import SpatialMap from "./pages/SpatialMap";
 import ExportReport from "./pages/ExportReport";
-import VolunteerApp from "./pages/VolunteerApp";
 import AdminVolunteers from "./pages/AdminVolunteers";
 import Settings from "./pages/Settings";
 import OcrScanner from "./pages/OcrScanner";
 import BatchOcr from "./pages/BatchOcr";
-import VolunteerLogin from "./pages/VolunteerLogin";
 import VolunteerCodes from "./pages/VolunteerCodes";
-import Help from "./pages/Help";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
+
+// Volunteer Pages
+import VolunteerApp from "./pages/VolunteerApp";
 
 function Router() {
   return (
     <Switch>
+      {/* Public Routes */}
       <Route path={"/"} component={Home} />
+      <Route path={"/volunteer/login"} component={VolunteerLogin} />
+      <Route path={"/help"} component={Help} />
+      
+      {/* Admin Routes - New Structure */}
+      <Route path={"/admin"} component={AdminDashboard} />
+      <Route path={"/admin/realtime"} component={RealTimeDashboard} />
+      <Route path={"/admin/alerts"} component={Alerts} />
+      <Route path={"/admin/klimek"} component={KlimekAnalysis} />
+      <Route path={"/admin/benford"} component={BenfordAnalysis} />
+      <Route path={"/admin/network"} component={NetworkAnalysis} />
+      <Route path={"/admin/spatial"} component={SpatialMap} />
+      <Route path={"/admin/volunteer-codes"} component={VolunteerCodes} />
+      <Route path={"/admin/volunteers"} component={AdminVolunteers} />
+      <Route path={"/admin/import"} component={AdminImport} />
+      <Route path={"/admin/batch-ocr"} component={BatchOcr} />
+      <Route path={"/admin/pvt"} component={PVTComparison} />
+      <Route path={"/admin/export"} component={ExportReport} />
+      <Route path={"/admin/settings"} component={Settings} />
+      <Route path={"/admin/help"} component={Help} />
+      <Route path={"/admin/evidence"} component={EvidenceUpload} />
+      
+      {/* Legacy Routes - Redirect to Admin */}
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/klimek"} component={KlimekAnalysis} />
       <Route path={"/benford"} component={BenfordAnalysis} />
@@ -36,19 +66,21 @@ function Router() {
       <Route path={"/evidence"} component={EvidenceUpload} />
       <Route path={"/alerts"} component={Alerts} />
       <Route path={"/pvt"} component={PVTComparison} />
-      <Route path={"/admin/import"} component={AdminImport} />
       <Route path={"/spatial"} component={SpatialMap} />
       <Route path={"/export"} component={ExportReport} />
-      <Route path={"/volunteer"} component={VolunteerApp} />
-      <Route path={"/admin/volunteers"} component={AdminVolunteers} />
       <Route path={"/settings"} component={Settings} />
       <Route path={"/ocr"} component={OcrScanner} />
       <Route path={"/batch-ocr"} component={BatchOcr} />
-      <Route path={"/volunteer/login"} component={VolunteerLogin} />
-      <Route path={"/volunteer/app"} component={VolunteerApp} />
-      <Route path={"/admin/volunteer-codes"} component={VolunteerCodes} />
-      <Route path={"/help"} component={Help} />
       <Route path={"/realtime"} component={RealTimeDashboard} />
+      
+      {/* Volunteer Routes */}
+      <Route path={"/volunteer"} component={VolunteerApp} />
+      <Route path={"/volunteer/app"} component={VolunteerApp} />
+      <Route path={"/volunteer/submit"} component={VolunteerApp} />
+      <Route path={"/volunteer/history"} component={VolunteerApp} />
+      <Route path={"/volunteer/help"} component={Help} />
+      
+      {/* 404 */}
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

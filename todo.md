@@ -341,3 +341,29 @@
 - [x] Include sample tally board image
 - [x] Allow users to test OCR accuracy before real use
 - [x] Support all 3 providers (Gemini, DeepSeek, Hugging Face)
+
+
+## New Features - Phase 12: UX Redesign
+
+### Landing Page Redesign
+- [x] แบ่งหน้าหลักเป็น 2 ส่วน (อาสาสมัคร vs Admin)
+- [x] ปุ่มใหญ่ 2 ปุ่มสำหรับแต่ละบทบาท
+- [x] ลด Feature Grid ที่ซับซ้อน
+- [x] เพิ่ม Quick Links สำหรับอาสาสมัคร
+
+### Admin Dashboard with Sidebar
+- [x] สร้าง AdminLayout component พร้อม Sidebar
+- [x] จัดกลุ่มเมนูตามหมวดหมู่ (ภาพรวม, วิเคราะห์, อาสาสมัคร, ข้อมูล, ตั้งค่า)
+- [x] สร้างหน้า AdminDashboard ใหม่
+- [x] อัปเดต RealTimeDashboard ให้ใช้ AdminLayout
+- [x] อัปเดต VolunteerCodes ให้ใช้ AdminLayout
+
+### Volunteer Portal Simplification
+- [x] สร้าง VolunteerLayout component พร้อม Bottom Tabs
+- [ ] รวมหน้า Volunteer เป็น Tabbed Interface
+- [ ] เพิ่ม Bottom Navigation สำหรับ Mobile
+
+### Route Structure Update
+- [x] เพิ่ม /admin routes ใหม่
+- [x] รักษา Legacy routes สำหรับ backward compatibility
+- [x] อัปเดต App.tsx
