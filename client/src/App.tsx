@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 // Public Pages
 import Home from "./pages/Home";
 import VolunteerLogin from "./pages/VolunteerLogin";
+import VolunteerRegister from "./pages/VolunteerRegister";
 import Help from "./pages/Help";
 
 // Admin Pages (with AdminLayout)
@@ -39,6 +40,7 @@ function Router() {
       {/* Public Routes */}
       <Route path={"/"} component={Home} />
       <Route path={"/volunteer/login"} component={VolunteerLogin} />
+      <Route path={"/volunteer/register"} component={VolunteerRegister} />
       <Route path={"/help"} component={Help} />
       
       {/* Admin Routes - New Structure */}

@@ -109,12 +109,19 @@ export default function Home() {
                   <span>ส่งข้อมูลแบบ Real-time</span>
                 </div>
               </div>
-              <Link href="/volunteer/login">
-                <Button className="w-full h-12 bg-green-600 hover:bg-green-700 text-white text-lg mt-4">
-                  เข้าด้วยรหัสอาสาสมัคร
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              <div className="space-y-3 mt-4">
+                <Link href="/volunteer/register">
+                  <Button className="w-full h-12 bg-green-600 hover:bg-green-700 text-white text-lg">
+                    ลงทะเบียนรับรหัสทันที
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/volunteer/login">
+                  <Button variant="outline" className="w-full h-10 border-green-600/50 text-green-400 hover:bg-green-600/10">
+                    มีรหัสแล้ว? เข้าสู่ระบบ
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
@@ -210,10 +217,10 @@ export default function Home() {
             สำหรับอาสาสมัคร
           </h3>
           <div className="grid sm:grid-cols-2 gap-3">
-            <Link href="/volunteer/login">
+            <Link href="/volunteer/register">
               <Button variant="outline" className="w-full justify-start border-slate-700 text-slate-300 hover:bg-slate-800">
                 <Smartphone className="mr-2 h-4 w-4 text-green-500" />
-                เข้าระบบด้วยรหัส 6 หลัก
+                ลงทะเบียนอาสาสมัครใหม่
               </Button>
             </Link>
             <Link href="/help">

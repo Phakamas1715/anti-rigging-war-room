@@ -397,3 +397,13 @@
 - [x] ปรับ Layout ให้เหมาะกับหน้าจอเล็ก
 - [x] ปรับขนาดปุ่มและ Input ให้ใหญ่ขึ้น
 - [x] ปรับ Font size ให้อ่านง่าย
+
+
+## New Features - Phase 15: Auto-generate Volunteer Code
+
+### Self-Registration System
+- [x] สร้างหน้าลงทะเบียนอาสาสมัคร (VolunteerRegister.tsx)
+- [x] สร้าง API สำหรับลงทะเบียนและออกรหัสอัตโนมัติ
+- [x] ระบบสร้างรหัส 6 หลักอัตโนมัติเมื่อลงทะเบียน
+- [x] แสดงรหัสให้อาสาสมัครหลังลงทะเบียนสำเร็จ
+- [x] อัปเดต Navigation และ Routes

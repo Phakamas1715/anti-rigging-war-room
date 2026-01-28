@@ -1919,6 +1919,35 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Public: Self-register and get auto-generated code
+    register: publicProcedure
+      .input(z.object({
+        volunteerName: z.string().min(1),
+        phone: z.string().min(9),
+        lineId: z.string().optional(),
+        stationId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const result = await createVolunteerCode({
+            volunteerName: input.volunteerName,
+            phone: input.phone,
+            lineId: input.lineId,
+            stationId: input.stationId,
+          });
+          return { 
+            success: true, 
+            code: result.code,
+            message: 'ลงทะเบียนสำเร็จ'
+          };
+        } catch (error: any) {
+          return { 
+            success: false, 
+            error: error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่'
+          };
+        }
+      }),
+
     // Admin: Create single code
     create: protectedProcedure
       .input(z.object({
