@@ -380,3 +380,20 @@
 - [x] เพิ่มปุ่ม "กลับหน้าหลัก" ในหน้า Volunteer Login
 - [x] ปรับปรุง Home page ให้แสดงปุ่มตาม role
 - [x] เพิ่มปุ่ม Logout ใน Header
+
+
+## New Features - Phase 14: Mobile-first Volunteer UI
+
+### Bottom Tabs Navigation
+- [x] สร้าง VolunteerMobileApp component
+- [x] เพิ่ม Bottom Tabs สำหรับ Mobile
+- [x] Tab: ส่งผลคะแนน, ประวัติ, คู่มือ
+
+### Swipe Gestures
+- [x] เพิ่ม Swipe ซ้าย-ขวาเพื่อเปลี่ยน Tab
+- [x] แสดง Indicator บอกตำแหน่ง Tab ปัจจุบัน
+
+### Mobile-first Design
+- [x] ปรับ Layout ให้เหมาะกับหน้าจอเล็ก
+- [x] ปรับขนาดปุ่มและ Input ให้ใหญ่ขึ้น
+- [x] ปรับ Font size ให้อ่านง่าย

@@ -32,6 +32,18 @@ export default function VolunteerLogin() {
       const result = await loginMutation.mutateAsync({ code });
 
       if (result.success) {
+        // Save session to localStorage for mobile app
+        const session = {
+          code: code,
+          volunteerId: 0, // Will be set by backend
+          stationId: result.stationId,
+          stationName: result.stationName || 'หน่วยเลือกตั้ง',
+          province: result.province || '',
+          district: result.district || '',
+          volunteerName: result.volunteerName || '',
+        };
+        localStorage.setItem('volunteer_session', JSON.stringify(session));
+        
         toast.success('เข้าสู่ระบบสำเร็จ');
         setLocation('/volunteer/app');
       } else {

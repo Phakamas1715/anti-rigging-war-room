@@ -1852,11 +1852,22 @@ export const appRouter = router({
           maxAge: 24 * 60 * 60 * 1000, // 24 hours
         });
         
+        // Get station info if available
+        let stationInfo = null;
+        if (result.stationId) {
+          const stations = await getPollingStations();
+          stationInfo = stations.find(s => s.id === result.stationId);
+        }
+        
         return {
           success: true,
           volunteerName: result.volunteerCode?.volunteerName,
           stationId: result.stationId,
           phone: result.volunteerCode?.phone,
+          stationName: stationInfo?.name || 'หน่วยเลือกตั้ง',
+          province: stationInfo?.province || '',
+          district: stationInfo?.district || '',
+          stationCode: stationInfo?.stationCode || '',
         };
       }),
 

@@ -31,6 +31,7 @@ import RealTimeDashboard from "./pages/RealTimeDashboard";
 
 // Volunteer Pages
 import VolunteerApp from "./pages/VolunteerApp";
+import VolunteerMobileApp from "./pages/VolunteerMobileApp";
 
 function Router() {
   return (
@@ -74,11 +75,12 @@ function Router() {
       <Route path={"/realtime"} component={RealTimeDashboard} />
       
       {/* Volunteer Routes */}
-      <Route path={"/volunteer"} component={VolunteerApp} />
-      <Route path={"/volunteer/app"} component={VolunteerApp} />
-      <Route path={"/volunteer/submit"} component={VolunteerApp} />
-      <Route path={"/volunteer/history"} component={VolunteerApp} />
+      <Route path={"/volunteer"} component={VolunteerMobileApp} />
+      <Route path={"/volunteer/app"} component={VolunteerMobileApp} />
+      <Route path={"/volunteer/submit"} component={VolunteerMobileApp} />
+      <Route path={"/volunteer/history"} component={VolunteerMobileApp} />
       <Route path={"/volunteer/help"} component={Help} />
+      <Route path={"/volunteer/legacy"} component={VolunteerApp} />
       
       {/* 404 */}
       <Route path={"/404"} component={NotFound} />
