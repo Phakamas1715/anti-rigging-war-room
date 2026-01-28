@@ -12,11 +12,13 @@ import {
   Lock,
   Camera,
   CheckCircle,
-  Zap
+  Zap,
+  LogOut
 } from "lucide-react";
 
 export default function Home() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -28,14 +30,31 @@ export default function Home() {
             <span className="text-xl font-bold text-white">Anti-Rigging War Room</span>
           </div>
           <nav className="flex items-center gap-4">
-            {isAuthenticated ? (
+            {loading ? (
+              <div className="h-9 w-24 bg-slate-800 animate-pulse rounded-md" />
+            ) : isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-400">{user?.name}</span>
-                <Link href="/admin">
-                  <Button size="sm" className="bg-red-600 hover:bg-red-700">
-                    เข้า Dashboard
-                  </Button>
-                </Link>
+                <div className="flex flex-col items-end">
+                  <span className="text-sm text-slate-300">{user?.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {isAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}
+                  </span>
+                </div>
+                {isAdmin && (
+                  <Link href="/admin">
+                    <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                      เข้า Dashboard
+                    </Button>
+                  </Link>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={logout}
+                  className="text-slate-400 hover:text-red-400"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             ) : (
               <a href={getLoginUrl()}>
@@ -125,13 +144,22 @@ export default function Home() {
                   <span>แจ้งเตือนผ่าน Discord/LINE</span>
                 </div>
               </div>
-              {isAuthenticated ? (
+              {isAdmin ? (
                 <Link href="/admin">
                   <Button className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-lg mt-4">
                     เข้าสู่ Dashboard
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
+              ) : isAuthenticated ? (
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-slate-400 mb-2">
+                    คุณไม่มีสิทธิ์เข้าถึง Admin Dashboard
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    เฉพาะผู้ดูแลระบบเท่านั้น
+                  </p>
+                </div>
               ) : (
                 <a href={getLoginUrl()}>
                   <Button className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-lg mt-4">

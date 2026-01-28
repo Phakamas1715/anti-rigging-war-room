@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Home } from 'lucide-react';
+import { Link } from 'wouter';
 import { toast } from 'sonner';
 
 export default function VolunteerLogin() {
@@ -139,6 +140,16 @@ export default function VolunteerLogin() {
             <CheckCircle className="w-6 h-6 text-green-500 mx-auto mb-2" />
             <p className="text-xs text-slate-400">ปลอดภัย</p>
           </div>
+        </div>
+
+        {/* Back to Home */}
+        <div className="mt-6 text-center">
+          <Link href="/">
+            <Button variant="ghost" className="text-slate-400 hover:text-white">
+              <Home className="w-4 h-4 mr-2" />
+              กลับหน้าหลัก
+            </Button>
+          </Link>
         </div>
       </div>
     </div>

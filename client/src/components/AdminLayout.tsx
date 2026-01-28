@@ -43,7 +43,8 @@ import {
   FileDown,
   Shield,
   Home,
-  HelpCircle
+  HelpCircle,
+  Ban
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -108,7 +109,7 @@ export default function AdminLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const { loading, user, logout } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -118,6 +119,7 @@ export default function AdminLayout({
     return <DashboardLayoutSkeleton />
   }
 
+  // ไม่ได้ login
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -148,6 +150,56 @@ export default function AdminLayout({
               กลับหน้าหลัก
             </Button>
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Login แล้ว แต่ไม่ใช่ Admin
+  if (user.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+          <div className="flex flex-col items-center gap-6">
+            <div className="p-4 bg-red-500/20 rounded-full">
+              <Ban className="h-12 w-12 text-red-500" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-center text-white">
+              ไม่มีสิทธิ์เข้าถึง
+            </h1>
+            <p className="text-sm text-slate-400 text-center max-w-sm">
+              คุณไม่มีสิทธิ์เข้าถึงหน้า Admin Dashboard<br />
+              เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงได้
+            </p>
+            <div className="text-xs text-slate-500 bg-slate-800/50 px-4 py-2 rounded-lg">
+              เข้าสู่ระบบในฐานะ: <span className="text-slate-300">{user.name}</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 w-full">
+            <Link href="/volunteer/login">
+              <Button
+                size="lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                ไปหน้าอาสาสมัคร
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline" className="w-full border-slate-600 text-slate-300 hover:bg-slate-800">
+                <Home className="mr-2 h-4 w-4" />
+                กลับหน้าหลัก
+              </Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              onClick={logout}
+              className="text-slate-400 hover:text-red-400"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              ออกจากระบบ
+            </Button>
+          </div>
         </div>
       </div>
     );

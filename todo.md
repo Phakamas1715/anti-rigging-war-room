@@ -343,7 +343,9 @@
 - [x] Support all 3 providers (Gemini, DeepSeek, Hugging Face)
 
 
-## New Features - Phase 12: UX Redesign
+## New Features - Phase 12: UX Redesign (Completed)
+
+## New Features - Phase 13: Admin Access Control & UX Improvements
 
 ### Landing Page Redesign
 - [x] แบ่งหน้าหลักเป็น 2 ส่วน (อาสาสมัคร vs Admin)
@@ -367,3 +369,14 @@
 - [x] เพิ่ม /admin routes ใหม่
 - [x] รักษา Legacy routes สำหรับ backward compatibility
 - [x] อัปเดต App.tsx
+
+
+### Admin Access Control
+- [x] ตรวจสอบ role ก่อนเข้า Admin Dashboard
+- [x] แสดงหน้า "ไม่มีสิทธิ์เข้าถึง" สำหรับ non-admin users
+- [x] กำหนด Admin เฉพาะ Owner (OWNER_OPEN_ID) เท่านั้น
+
+### Navigation Improvements
+- [x] เพิ่มปุ่ม "กลับหน้าหลัก" ในหน้า Volunteer Login
+- [x] ปรับปรุง Home page ให้แสดงปุ่มตาม role
+- [x] เพิ่มปุ่ม Logout ใน Header
