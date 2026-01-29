@@ -13,7 +13,9 @@ import {
   Camera,
   CheckCircle,
   Zap,
-  LogOut
+  LogOut,
+  Play,
+  Eye
 } from "lucide-react";
 
 export default function Home() {
@@ -177,6 +179,25 @@ export default function Home() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </section>
+
+      {/* Demo Section */}
+      <section className="container pb-12">
+        <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 border border-purple-700/50 rounded-xl p-6 max-w-2xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Eye className="h-6 w-6 text-purple-400" />
+            <h3 className="text-xl font-bold text-white">ดูตัวอย่างการทำงาน</h3>
+          </div>
+          <p className="text-slate-400 mb-4">
+            สำรวจฟีเจอร์ทั้งหมดของระบบพร้อมข้อมูลจำลองแบบ Interactive ก่อนตัดสินใจใช้งาน
+          </p>
+          <Link href="/demo">
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              <Play className="mr-2 h-4 w-4" />
+              เข้าสู่โหมดสาธิต
+            </Button>
+          </Link>
         </div>
       </section>
 

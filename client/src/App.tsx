@@ -30,6 +30,7 @@ import BatchOcr from "./pages/BatchOcr";
 import VolunteerCodes from "./pages/VolunteerCodes";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
 import DemoDashboard from "./pages/DemoDashboard";
+import PublicDemo from "./pages/PublicDemo";
 
 // Volunteer Pages
 import VolunteerApp from "./pages/VolunteerApp";
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/volunteer/login"} component={VolunteerLogin} />
       <Route path={"/volunteer/register"} component={VolunteerRegister} />
       <Route path={"/help"} component={Help} />
+      <Route path={"/demo"} component={PublicDemo} />
       
       {/* Admin Routes - New Structure */}
       <Route path={"/admin"} component={AdminDashboard} />
