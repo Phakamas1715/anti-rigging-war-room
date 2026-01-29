@@ -44,7 +44,8 @@ import {
   Shield,
   Home,
   HelpCircle,
-  Ban
+  Ban,
+  Sparkles
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -91,6 +92,7 @@ const menuGroups = [
     items: [
       { icon: Settings, label: "ตั้งค่าระบบ", path: "/admin/settings" },
       { icon: HelpCircle, label: "คู่มือการใช้งาน", path: "/admin/help" },
+      { icon: Sparkles, label: "Demo Dashboard", path: "/admin/demo" },
     ]
   },
 ];

@@ -407,3 +407,23 @@
 - [x] ระบบสร้างรหัส 6 หลักอัตโนมัติเมื่อลงทะเบียน
 - [x] แสดงรหัสให้อาสาสมัครหลังลงทะเบียนสำเร็จ
 - [x] อัปเดต Navigation และ Routes
+
+
+## New Features - Phase 16: Demo Dashboard with Mock Data
+
+### Mock Data Generation
+- [x] สร้างข้อมูลจำลองหน่วยเลือกตั้ง 50 หน่วย
+- [x] สร้างข้อมูลจำลองผลคะแนน
+- [x] สร้างข้อมูลจำลองการแจ้งเตือน
+- [x] สร้างข้อมูลจำลอง PVT Comparison
+
+### Demo Mode Toggle
+- [x] เพิ่มปุ่ม Demo Mode ใน Dashboard
+- [x] สลับระหว่างข้อมูลจริงและข้อมูลจำลอง
+- [x] แสดง Banner บอกว่าอยู่ใน Demo Mode
+
+### Dashboard Visualizations
+- [x] กราฟแท่งแสดงคะแนนผู้สมัคร
+- [x] กราฟวงกลมแสดงสัดส่วนคะแนน
+- [x] แสดงความครอบคลุมรายจังหวัด
+- [x] แสดงสรุป Klimek และ Benford Analysis
