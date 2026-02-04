@@ -11,6 +11,7 @@ import VolunteerLogin from "./pages/VolunteerLogin";
 import VolunteerRegister from "./pages/VolunteerRegister";
 import Help from "./pages/Help";
 import HowItWorks from "./pages/HowItWorks";
+import AdminCodeLogin from "./pages/AdminCodeLogin";
 
 // Admin Pages (with AdminLayout)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -47,6 +48,7 @@ function Router() {
       <Route path={"/help"} component={Help} />
       <Route path={"/demo"} component={PublicDemo} />
       <Route path={"/how-it-works"} component={HowItWorks} />
+      <Route path={"/admin/login"} component={AdminCodeLogin} />
       
       {/* Admin Routes - New Structure */}
       <Route path={"/admin"} component={AdminDashboard} />

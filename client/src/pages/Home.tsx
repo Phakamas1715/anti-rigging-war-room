@@ -15,8 +15,11 @@ import {
   Zap,
   LogOut,
   Play,
-  Eye
+  Eye,
+  HelpCircle
 } from "lucide-react";
+import { TourButton } from "@/components/TourButton";
+import { homeTourSteps } from "@/lib/tourSteps";
 
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -32,6 +35,12 @@ export default function Home() {
             <span className="text-xl font-bold text-white">Anti-Rigging War Room</span>
           </div>
           <nav className="flex items-center gap-4">
+            <TourButton 
+              tourId="home-tour" 
+              steps={homeTourSteps} 
+              showOnFirstVisit={false}
+              className="border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+            />
             {loading ? (
               <div className="h-9 w-24 bg-slate-800 animate-pulse rounded-md" />
             ) : isAuthenticated ? (
@@ -73,7 +82,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container py-16 md:py-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h1 data-tour="home-title" className="text-4xl md:text-5xl font-bold text-white mb-6">
             ระบบตรวจจับการทุจริต
             <span className="text-red-500"> การเลือกตั้ง</span>
           </h1>
@@ -86,7 +95,7 @@ export default function Home() {
         {/* Two Main Entry Points */}
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Volunteer Card */}
-          <Card className="bg-gradient-to-br from-green-900/30 to-green-950/50 border-green-800/50 hover:border-green-600/50 transition-all group">
+          <Card data-tour="volunteer-section" className="bg-gradient-to-br from-green-900/30 to-green-950/50 border-green-800/50 hover:border-green-600/50 transition-all group">
             <CardHeader className="text-center pb-4">
               <div className="mx-auto w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Smartphone className="h-10 w-10 text-green-500" />
@@ -128,7 +137,7 @@ export default function Home() {
           </Card>
 
           {/* Admin Card */}
-          <Card className="bg-gradient-to-br from-red-900/30 to-red-950/50 border-red-800/50 hover:border-red-600/50 transition-all group">
+          <Card data-tour="admin-section" className="bg-gradient-to-br from-red-900/30 to-red-950/50 border-red-800/50 hover:border-red-600/50 transition-all group">
             <CardHeader className="text-center pb-4">
               <div className="mx-auto w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <BarChart3 className="h-10 w-10 text-red-500" />
@@ -169,13 +178,20 @@ export default function Home() {
                     เฉพาะผู้ดูแลระบบเท่านั้น
                   </p>
                 </div>
-              ) : (
-                <a href={getLoginUrl()}>
-                  <Button className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-lg mt-4">
-                    เข้าสู่ระบบ Admin
+) : (
+              <div className="space-y-3 mt-4">
+                <Link href="/admin/login">
+                  <Button className="w-full h-12 bg-red-600 hover:bg-red-700 text-white text-lg">
+                    เข้าสู่ระบบด้วยรหัส
                     <Lock className="ml-2 h-5 w-5" />
                   </Button>
+                </Link>
+                <a href={getLoginUrl()}>
+                  <Button variant="outline" className="w-full h-10 border-red-600/50 text-red-400 hover:bg-red-600/10">
+                    เข้าสู่ระบบด้วย Manus Account
+                  </Button>
                 </a>
+              </div>
               )}
             </CardContent>
           </Card>
@@ -193,7 +209,7 @@ export default function Home() {
             สำรวจฟีเจอร์ทั้งหมดของระบบพร้อมข้อมูลจำลองแบบ Interactive ก่อนตัดสินใจใช้งาน
           </p>
           <Link href="/demo">
-            <Button className="bg-purple-600 hover:bg-purple-700">
+            <Button data-tour="demo-button" className="bg-purple-600 hover:bg-purple-700">
               <Play className="mr-2 h-4 w-4" />
               เข้าสู่โหมดสาธิต
             </Button>
@@ -251,7 +267,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link href="/how-it-works">
-              <Button variant="outline" className="w-full justify-start border-slate-700 text-slate-300 hover:bg-slate-800">
+              <Button data-tour="how-it-works" variant="outline" className="w-full justify-start border-slate-700 text-slate-300 hover:bg-slate-800">
                 <Shield className="mr-2 h-4 w-4 text-red-500" />
                 วิธีการทำงานของระบบ
               </Button>

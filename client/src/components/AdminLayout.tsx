@@ -102,6 +102,23 @@ const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 
+// Check if user logged in via admin code
+function checkAdminCodeSession(): boolean {
+  try {
+    const session = localStorage.getItem('adminSession');
+    if (!session) return false;
+    const parsed = JSON.parse(session);
+    // Session expires after 24 hours
+    if (Date.now() - parsed.loginTime > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('adminSession');
+      return false;
+    }
+    return parsed.isAdmin === true;
+  } catch {
+    return false;
+  }
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -112,6 +129,11 @@ export default function AdminLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user, logout } = useAuth();
+  const [isAdminByCode, setIsAdminByCode] = useState(false);
+
+  useEffect(() => {
+    setIsAdminByCode(checkAdminCodeSession());
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -121,8 +143,10 @@ export default function AdminLayout({
     return <DashboardLayoutSkeleton />
   }
 
-  // ไม่ได้ login
-  if (!user) {
+  // Check if logged in via admin code
+  if (isAdminByCode) {
+    // Allow access via admin code
+  } else if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
@@ -157,8 +181,8 @@ export default function AdminLayout({
     );
   }
 
-  // Login แล้ว แต่ไม่ใช่ Admin
-  if (user.role !== 'admin') {
+  // Login แล้ว แต่ไม่ใช่ Admin (และไม่ได้ login ด้วยรหัส)
+  if (!isAdminByCode && user && user.role !== 'admin') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">

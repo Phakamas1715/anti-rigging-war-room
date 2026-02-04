@@ -463,3 +463,36 @@
 ### Website Integration
 - [x] เพิ่มหน้า "วิธีการทำงาน" ในเว็บไซต์
 - [x] เพิ่มลิงก์ในหน้าหลัก
+
+
+## New Features - Phase 19: Interactive Tutorial
+
+### Tour Component
+- [ ] สร้าง TourProvider และ useTour hook
+- [ ] สร้าง TourStep component สำหรับแสดง tooltip
+- [ ] สร้าง TourOverlay สำหรับ highlight element
+- [ ] เพิ่ม Animation และ Transition
+
+### Home Page Tutorial
+- [ ] Tutorial แนะนำหน้าหลัก
+- [ ] อธิบายปุ่มสำหรับอาสาสมัคร
+- [ ] อธิบายปุ่มสำหรับ Admin
+
+### Admin Dashboard Tutorial
+- [ ] Tutorial แนะนำ Sidebar navigation
+- [ ] อธิบายเครื่องมือวิเคราะห์แต่ละตัว
+- [ ] อธิบาย Quick Actions
+
+### Volunteer Tutorial
+- [ ] Tutorial แนะนำหน้าลงทะเบียน
+- [ ] Tutorial แนะนำหน้า Mobile App
+- [ ] อธิบาย Bottom Tabs และ Swipe
+
+
+## New Features - Phase 20: Admin Code Login
+
+### Admin Access by Code
+- [x] สร้างหน้า Admin Login ด้วยรหัส 464646
+- [x] เพิ่ม route สำหรับ Admin Code Login
+- [x] เพิ่มลิงก์ในหน้าหลัก
+- [x] อัปเดต AdminLayout ให้ตรวจสอบ adminSession
