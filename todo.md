@@ -511,3 +511,14 @@
 - [x] Update card styles with subtle shadows
 - [x] Improve typography and spacing
 - [x] Add smooth micro-interactions
+
+
+## New Features - Phase 21: GLUE-FIN Integration
+
+### GLUE-FIN Module
+- [x] Design GLUE-FIN formula and documentation
+- [x] Create glueFin.ts module with calculateGlueFin function
+- [x] Create glueFin.test.ts with 17 test cases
+- [x] All 95 tests passing (including GLUE-FIN)
+- [ ] Integrate GLUE-FIN into Dashboard UI
+- [ ] Add GLUE-FIN score to polling station reports
