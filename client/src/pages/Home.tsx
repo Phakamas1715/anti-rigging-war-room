@@ -250,6 +250,12 @@ export default function Home() {
                 คู่มือการใช้งาน
               </Button>
             </Link>
+            <Link href="/how-it-works">
+              <Button variant="outline" className="w-full justify-start border-slate-700 text-slate-300 hover:bg-slate-800">
+                <Shield className="mr-2 h-4 w-4 text-red-500" />
+                วิธีการทำงานของระบบ
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

@@ -448,3 +448,18 @@
 ### Demo Pages for Public
 - [x] สร้างหน้า Demo สำหรับผู้ใช้ทั่วไป (ไม่ต้อง login)
 - [x] แสดงตัวอย่างการทำงานแต่ละฟีเจอร์
+
+
+## New Features - Phase 18: System Documentation
+
+### Documentation
+- [x] สร้างเอกสารอธิบายระบบตรวจจับการโกง
+- [x] อธิบาย Klimek Model
+- [x] อธิบาย Benford's Law
+- [x] อธิบาย Network Analysis (SNA)
+- [x] อธิบาย PVT Comparison
+- [x] อธิบาย Spatial Analysis
+
+### Website Integration
+- [x] เพิ่มหน้า "วิธีการทำงาน" ในเว็บไซต์
+- [x] เพิ่มลิงก์ในหน้าหลัก

@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import VolunteerLogin from "./pages/VolunteerLogin";
 import VolunteerRegister from "./pages/VolunteerRegister";
 import Help from "./pages/Help";
+import HowItWorks from "./pages/HowItWorks";
 
 // Admin Pages (with AdminLayout)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -45,6 +46,7 @@ function Router() {
       <Route path={"/volunteer/register"} component={VolunteerRegister} />
       <Route path={"/help"} component={Help} />
       <Route path={"/demo"} component={PublicDemo} />
+      <Route path={"/how-it-works"} component={HowItWorks} />
       
       {/* Admin Routes - New Structure */}
       <Route path={"/admin"} component={AdminDashboard} />
