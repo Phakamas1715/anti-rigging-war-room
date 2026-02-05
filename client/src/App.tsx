@@ -33,6 +33,7 @@ import VolunteerCodes from "./pages/VolunteerCodes";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
 import DemoDashboard from "./pages/DemoDashboard";
 import PublicDemo from "./pages/PublicDemo";
+import GlueFinHeatmap from "./pages/GlueFinHeatmap";
 
 // Volunteer Pages
 import VolunteerApp from "./pages/VolunteerApp";
@@ -67,6 +68,7 @@ function Router() {
       <Route path={"/admin/settings"} component={Settings} />
       <Route path={"/admin/help"} component={Help} />
       <Route path={"/admin/demo"} component={DemoDashboard} />
+      <Route path={"/admin/gluefin"} component={GlueFinHeatmap} />
       <Route path={"/admin/evidence"} component={EvidenceUpload} />
       
       {/* Legacy Routes - Redirect to Admin */}

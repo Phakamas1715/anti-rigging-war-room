@@ -69,6 +69,7 @@ const menuGroups = [
       { icon: FileText, label: "Benford's Law", path: "/admin/benford" },
       { icon: Network, label: "Network Analysis", path: "/admin/network" },
       { icon: Map, label: "Spatial Map", path: "/admin/spatial" },
+      { icon: Shield, label: "GLUE-FIN Heatmap", path: "/admin/gluefin" },
     ]
   },
   {

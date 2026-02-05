@@ -522,3 +522,11 @@
 - [x] All 95 tests passing (including GLUE-FIN)
 - [ ] Integrate GLUE-FIN into Dashboard UI
 - [ ] Add GLUE-FIN score to polling station reports
+
+
+### GLUE-FIN Heatmap
+- [x] Create Thailand map SVG component
+- [x] Add province-level GLUE-FIN score coloring
+- [x] Add interactive tooltips with province details
+- [x] Create GlueFinHeatmap page in Admin Dashboard
+- [x] Add legend for risk levels
