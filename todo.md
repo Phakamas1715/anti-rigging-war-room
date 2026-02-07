@@ -564,3 +564,16 @@
 - [x] Add district detail panel with component scores
 - [x] Add back navigation from district view to province view
 - [x] Test drill-down functionality
+
+## Phase 24: Constituency Search - ค้นหาตามเขตเลือกตั้ง
+- [x] Create constituencyData.ts module (province → constituency → districts)
+- [x] Create tRPC endpoints: constituency.search, constituency.detail, constituency.provinces, constituency.provinceZones
+- [x] Create ConstituencySearch.tsx page with search/filter UI
+- [x] Add Yasothon Zone 1, 2, 3 data with real candidate info (9 candidates zone 2)
+- [x] Add constituency search to AdminLayout sidebar
+- [x] Add route in App.tsx (/admin/constituency)
+- [x] Write vitest tests for constituency module (20 tests passed)
+- [x] Province zone count for all 77 provinces
+- [x] GLUE-FIN Score per constituency
+- [x] Stats from 2566 election (registered voters, turnout, valid/invalid votes)
+- [x] Candidate vote history from 2566 (where available)

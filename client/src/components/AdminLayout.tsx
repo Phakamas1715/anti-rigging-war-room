@@ -45,7 +45,8 @@ import {
   Home,
   HelpCircle,
   Ban,
-  Sparkles
+  Sparkles,
+  Search
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -70,6 +71,7 @@ const menuGroups = [
       { icon: Network, label: "Network Analysis", path: "/admin/network" },
       { icon: Map, label: "Spatial Map", path: "/admin/spatial" },
       { icon: Shield, label: "GLUE-FIN Heatmap", path: "/admin/gluefin" },
+      { icon: Search, label: "ค้นหาเขตเลือกตั้ง", path: "/admin/constituency" },
     ]
   },
   {

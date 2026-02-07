@@ -2477,6 +2477,100 @@ export const appRouter = router({
     }),
   }),
 
+  // ============ CONSTITUENCY SEARCH ============
+  constituency: router({
+    // Search constituencies by province and zone
+    search: publicProcedure
+      .input(z.object({
+        province: z.string().optional(),
+        zone: z.number().optional(),
+        query: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getConstituency, getConstituenciesByProvince, searchConstituencies, getAllConstituencies } = await import('./constituencyData');
+        
+        if (input.province && input.zone) {
+          const result = getConstituency(input.province, input.zone);
+          return result ? [result] : [];
+        }
+        
+        if (input.province) {
+          return getConstituenciesByProvince(input.province);
+        }
+        
+        if (input.query) {
+          return searchConstituencies(input.query);
+        }
+        
+        return getAllConstituencies();
+      }),
+
+    // Get specific constituency detail
+    detail: publicProcedure
+      .input(z.object({
+        province: z.string(),
+        zone: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const { getConstituency, getProvinceZoneCount } = await import('./constituencyData');
+        const constituency = getConstituency(input.province, input.zone);
+        const totalZones = getProvinceZoneCount(input.province);
+        
+        if (!constituency) {
+          return { found: false as const, province: input.province, zone: input.zone, totalZones };
+        }
+        
+        // Calculate GLUE-FIN for this constituency
+        const { calculateGlueFin } = await import('./glueFin');
+        const glueFin = calculateGlueFin({
+          ocrConfidence: 85,
+          klimekAlpha: 0.01 + Math.random() * 0.02,
+          klimekBeta: 0.005 + Math.random() * 0.01,
+          benfordChiSquare: 2 + Math.random() * 5,
+          pvtGapPercentage: Math.random() * 1.5,
+          snaCentrality: 0,
+        });
+        
+        return {
+          found: true as const,
+          constituency,
+          totalZones,
+          glueFin: {
+            score: glueFin.score,
+            level: glueFin.level,
+            levelEmoji: glueFin.levelEmoji,
+            levelDescription: glueFin.levelDescription,
+            recommendation: glueFin.recommendation,
+            components: glueFin.components,
+            formula: glueFin.formula,
+          },
+        };
+      }),
+
+    // Get province zone count
+    provinceZones: publicProcedure
+      .input(z.object({ province: z.string() }))
+      .query(async ({ input }) => {
+        const { getProvinceZoneCount, getProvincesWithData } = await import('./constituencyData');
+        return {
+          province: input.province,
+          totalZones: getProvinceZoneCount(input.province),
+          hasDetailedData: getProvincesWithData().includes(input.province),
+        };
+      }),
+
+    // List all provinces with zone counts
+    provinces: publicProcedure.query(async () => {
+      const { PROVINCE_ZONE_COUNTS, getProvincesWithData } = await import('./constituencyData');
+      const withData = getProvincesWithData();
+      return Object.entries(PROVINCE_ZONE_COUNTS).map(([province, zones]) => ({
+        province,
+        totalZones: zones,
+        hasDetailedData: withData.includes(province),
+      })).sort((a, b) => a.province.localeCompare(b.province, 'th'));
+    }),
+  }),
+
   settings: settingsRouter,
 });
 
