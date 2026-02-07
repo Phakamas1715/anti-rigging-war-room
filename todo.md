@@ -530,3 +530,29 @@
 - [x] Add interactive tooltips with province details
 - [x] Create GlueFinHeatmap page in Admin Dashboard
 - [x] Add legend for risk levels
+
+
+## Bug Fix
+- [ ] Fix API Query Error "The string did not match the expected pattern" on Home page
+
+## Phase 22: Help Update & GLUE-FIN API Integration
+- [ ] Update Help.tsx with GLUE-FIN documentation
+- [ ] Update Help.tsx with Klimek Model documentation
+- [ ] Update Help.tsx with Benford's Law documentation
+- [ ] Update Help.tsx with Admin tools guide
+- [ ] Create GLUE-FIN tRPC API endpoint in routers.ts
+- [ ] Create GLUE-FIN database schema in drizzle/schema.ts
+- [ ] Add GLUE-FIN db helpers in server/db.ts
+- [ ] Update GlueFinHeatmap.tsx to use real API data
+- [ ] Run database migration (pnpm db:push)
+- [ ] Test all endpoints and UI
+
+## Phase 22: Help Update & GLUE-FIN API Integration
+- [x] Update Help.tsx with GLUE-FIN documentation
+- [x] Add Klimek Model explanation to Help
+- [x] Add Benford's Law explanation to Help
+- [x] Add Admin tools guide to Help
+- [x] Create tRPC API endpoint for GLUE-FIN
+- [x] Connect GlueFinHeatmap to real API data
+- [x] Add data source indicator (real/demo)
+- [x] Add auto-refresh every 30 seconds

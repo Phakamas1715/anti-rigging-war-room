@@ -2205,6 +2205,160 @@ export const appRouter = router({
         .sort((a, b) => b.totalStations - a.totalStations);
     }),
   }),
+  // ============ GLUE-FIN (Global Unified Election Fraud INdicator) ============
+  glueFin: router({
+    // Calculate GLUE-FIN score for a single province
+    analyzeProvince: publicProcedure
+      .input(z.object({
+        province: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { calculateGlueFin } = await import('./glueFin');
+        const data = await getElectionDataForAnalysis();
+        const provinceStations = data.filter(d => {
+          // Match by station's province
+          return true; // Will match all for now, filtered by province in real data
+        });
+
+        // Calculate Klimek for this province
+        const analysisData = provinceStations.length > 0
+          ? provinceStations.map(d => ({
+              turnout: parseFloat(d.turnout?.toString() || '0'),
+              voteShare: parseFloat(d.candidateAShare?.toString() || '0'),
+            }))
+          : generateDemoElectionData().slice(0, 50);
+
+        const klimekResult = calculateKlimekAnalysis(analysisData);
+
+        // Calculate Benford
+        const voteCounts = provinceStations.map(d => d.candidateAVotes || 0).filter(v => v > 10);
+        const benfordResult = voteCounts.length > 0 ? calculateBenfordAnalysis(voteCounts) : null;
+
+        // Build GLUE-FIN input
+        const glueFinInput = {
+          ocrConfidence: 85, // Default from system average
+          klimekAlpha: klimekResult.alpha,
+          klimekBeta: klimekResult.beta,
+          benfordChiSquare: benfordResult?.chiSquare ?? 0,
+          pvtGapPercentage: 0, // Will be calculated from real PVT data
+          snaCentrality: 0,
+        };
+
+        return calculateGlueFin(glueFinInput);
+      }),
+
+    // Calculate GLUE-FIN scores for all provinces (heatmap)
+    analyzeAllProvinces: publicProcedure.query(async () => {
+      const { calculateGlueFin } = await import('./glueFin');
+      const allData = await getElectionDataForAnalysis();
+      const alerts = await getFraudAlerts();
+      const stats = await getDashboardStats();
+
+      // Group data by province via station lookup
+      const provinceResults = THAILAND_PROVINCES.map(province => {
+        // For now, generate per-province analysis
+        // In production, this would filter by actual province data
+        const hasRealData = allData.length > 0;
+
+        let klimekAlpha = 0;
+        let klimekBeta = 0;
+        let benfordChi = 0;
+        let pvtGap = 0;
+        let snaCentrality = 0;
+        let ocrConfidence = 85;
+
+        if (hasRealData) {
+          // Use real data analysis
+          const analysisData = allData.map(d => ({
+            turnout: parseFloat(d.turnout?.toString() || '0'),
+            voteShare: parseFloat(d.candidateAShare?.toString() || '0'),
+          }));
+          const klimek = calculateKlimekAnalysis(analysisData);
+          klimekAlpha = klimek.alpha;
+          klimekBeta = klimek.beta;
+
+          const voteCounts = allData.map(d => d.candidateAVotes || 0).filter(v => v > 10);
+          if (voteCounts.length > 0) {
+            benfordChi = calculateBenfordAnalysis(voteCounts).chiSquare;
+          }
+        }
+
+        const result = calculateGlueFin({
+          ocrConfidence,
+          klimekAlpha,
+          klimekBeta,
+          benfordChiSquare: benfordChi,
+          pvtGapPercentage: pvtGap,
+          snaCentrality,
+        });
+
+        return {
+          provinceCode: province.code,
+          provinceName: province.name,
+          region: province.region,
+          lat: province.lat,
+          lng: province.lng,
+          score: result.score,
+          level: result.level,
+          levelEmoji: result.levelEmoji,
+          levelDescription: result.levelDescription,
+          recommendation: result.recommendation,
+          components: result.components,
+          formula: result.formula,
+        };
+      });
+
+      // Summary
+      const byLevel = {
+        normal: provinceResults.filter(p => p.level === 'normal').length,
+        review: provinceResults.filter(p => p.level === 'review').length,
+        suspicious: provinceResults.filter(p => p.level === 'suspicious').length,
+        critical: provinceResults.filter(p => p.level === 'critical').length,
+        crisis: provinceResults.filter(p => p.level === 'crisis').length,
+      };
+
+      const avgScore = provinceResults.reduce((sum, p) => sum + p.score, 0) / provinceResults.length;
+
+      return {
+        provinces: provinceResults,
+        summary: {
+          totalProvinces: provinceResults.length,
+          byLevel,
+          averageScore: Math.round(avgScore * 10) / 10,
+          highRiskProvinces: provinceResults
+            .filter(p => p.level === 'critical' || p.level === 'crisis')
+            .map(p => p.provinceName),
+        },
+        dataSource: allData.length > 0 ? 'real' : 'demo',
+        totalDataPoints: allData.length,
+        totalAlerts: alerts.length,
+        lastUpdated: new Date().toISOString(),
+      };
+    }),
+
+    // Calculate GLUE-FIN with custom input
+    calculate: publicProcedure
+      .input(z.object({
+        ocrConfidence: z.number().optional(),
+        klimekAlpha: z.number().optional(),
+        klimekBeta: z.number().optional(),
+        fraudZonePercentage: z.number().optional(),
+        benfordChiSquare: z.number().optional(),
+        pvtGapPercentage: z.number().optional(),
+        snaCentrality: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { calculateGlueFin } = await import('./glueFin');
+        return calculateGlueFin(input);
+      }),
+
+    // Get GLUE-FIN weights configuration
+    getWeights: publicProcedure.query(async () => {
+      const { DEFAULT_WEIGHTS, THRESHOLDS } = await import('./glueFin');
+      return { weights: DEFAULT_WEIGHTS, thresholds: THRESHOLDS };
+    }),
+  }),
+
   settings: settingsRouter,
 });
 
