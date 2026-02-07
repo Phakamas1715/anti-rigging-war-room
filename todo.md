@@ -577,3 +577,18 @@
 - [x] GLUE-FIN Score per constituency
 - [x] Stats from 2566 election (registered voters, turnout, valid/invalid votes)
 - [x] Candidate vote history from 2566 (where available)
+
+## Phase 25: Tally Mark OCR - อ่านคะแนนแบบขีดจำนวน
+- [ ] ปรับปรุง OCR prompt ให้รองรับการอ่านขีดคะแนน (Tally marks ||||)
+- [ ] เพิ่มโหมด "ขีดคะแนน" ใน OCR Scanner
+- [ ] สร้างตัวอย่างภาพกระดานนับคะแนนแบบขีด
+- [ ] ทดสอบ OCR กับภาพขีดคะแนนจริง
+- [ ] เชื่อมต่อกับข้อมูลผู้สมัครยโสธร เขต 2
+- [x] Write vitest tests (16 tests passed)
+## Phase 25b: OCR รองรับ ส.ส.5/11 (ขีดคะแนน) และ ส.ส.5/18 (ตาราง)
+- [x] ปรับปรุง geminiOcr.ts เพิ่ม prompt สำหรับ ส.ส.5/11 (กระดานขีดคะแนน)
+- [x] ปรับปรุง geminiOcr.ts เพิ่ม prompt สำหรับ ส.ส.5/18 (แบบฟอร์มรายงานผล)
+- [x] เพิ่ม ocrMode parameter ใน batchProcessSingle router (ss5_11, ss5_18)
+- [x] เพิ่ม UI เลือกประเภทเอกสาร (ส.ส.5/11 / ส.ส.5/18 / Auto) พร้อมคำอธิบาย
+- [x] ทดสอบ UI แสดงผลถูกต้อง
+- [x] Write vitest tests (16 tests passed)

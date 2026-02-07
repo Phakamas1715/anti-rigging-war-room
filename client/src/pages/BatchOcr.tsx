@@ -52,6 +52,7 @@ export default function BatchOcr() {
   const [isPaused, setIsPaused] = useState(false);
   const [provider, setProvider] = useState<'huggingface' | 'deepseek' | 'gemini'>('gemini');
   const [apiKey, setApiKey] = useState('');
+  const [ocrMode, setOcrMode] = useState<'auto' | 'tally' | 'numeric' | 'ss5_11' | 'ss5_18'>('auto');
   const [showSettings, setShowSettings] = useState(false);
   const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
   const [isSubmittingPVT, setIsSubmittingPVT] = useState(false);
@@ -290,6 +291,7 @@ export default function BatchOcr() {
           base64Image,
           provider,
           apiKey,
+          ocrMode: provider === 'gemini' ? ocrMode : undefined,
         });
 
         const updatedFile = {
@@ -583,6 +585,81 @@ export default function BatchOcr() {
                   )}
                 </div>
               </Tabs>
+
+              {/* OCR Document Type Selector (Gemini only) */}
+              {provider === 'gemini' && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-base font-medium mb-3 flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    ประเภทเอกสารเลือกตั้ง
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2 max-w-lg">
+                    <button
+                      onClick={() => setOcrMode('auto')}
+                      className={`p-3 rounded-lg border text-center transition-all ${
+                        ocrMode === 'auto'
+                          ? 'border-orange-500 bg-orange-500/10 text-orange-400'
+                          : 'border-border hover:border-muted-foreground text-muted-foreground'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">🔍</div>
+                      <div className="text-sm font-medium">ตรวจอัตโนมัติ</div>
+                      <div className="text-[10px] mt-0.5 opacity-70">Auto Detect</div>
+                    </button>
+                    <button
+                      onClick={() => setOcrMode('ss5_11')}
+                      className={`p-3 rounded-lg border text-center transition-all ${
+                        ocrMode === 'ss5_11' || ocrMode === 'tally'
+                          ? 'border-orange-500 bg-orange-500/10 text-orange-400'
+                          : 'border-border hover:border-muted-foreground text-muted-foreground'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">📋</div>
+                      <div className="text-sm font-medium">ส.ส.5/11</div>
+                      <div className="text-[10px] mt-0.5 opacity-70">กระดานขีดคะแนน</div>
+                    </button>
+                    <button
+                      onClick={() => setOcrMode('ss5_18')}
+                      className={`p-3 rounded-lg border text-center transition-all ${
+                        ocrMode === 'ss5_18' || ocrMode === 'numeric'
+                          ? 'border-orange-500 bg-orange-500/10 text-orange-400'
+                          : 'border-border hover:border-muted-foreground text-muted-foreground'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">📄</div>
+                      <div className="text-sm font-medium">ส.ส.5/18</div>
+                      <div className="text-[10px] mt-0.5 opacity-70">แบบรายงานผล</div>
+                    </button>
+                  </div>
+                  
+                  {/* Description for selected mode */}
+                  {(ocrMode === 'ss5_11' || ocrMode === 'tally') && (
+                    <div className="mt-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 max-w-lg">
+                      <p className="text-xs text-orange-400 font-medium mb-1">📋 ส.ส.5/11 - กระดานนับคะแนน (Tally Board)</p>
+                      <p className="text-xs text-orange-400/80">
+                        กระดานขนาดใหญ่ตั้งหน้าหน่วยเลือกตั้ง คะแนนเป็นขีด (||||) ชุดละ 5 คะแนน<br/>
+                        ระบบจะนับขีดคะแนนทีละชุดอย่างละเอียดและแสดง breakdown
+                      </p>
+                    </div>
+                  )}
+                  {(ocrMode === 'ss5_18' || ocrMode === 'numeric') && (
+                    <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 max-w-lg">
+                      <p className="text-xs text-blue-400 font-medium mb-1">📄 ส.ส.5/18 - แบบรายงานผลการนับคะแนน</p>
+                      <p className="text-xs text-blue-400/80">
+                        เอกสารทางการมีตราครุฑ คะแนนเป็นตัวเลขในตาราง<br/>
+                        ระบบจะอ่านชื่อ-สกุลผู้สมัคร, คะแนน, จำนวนผู้มีสิทธิ์, บัตรเสีย
+                      </p>
+                    </div>
+                  )}
+                  {ocrMode === 'auto' && (
+                    <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border max-w-lg">
+                      <p className="text-xs text-muted-foreground">
+                        ระบบจะตรวจจับอัตโนมัติว่าเป็น ส.ส.5/11 (ขีดคะแนน) หรือ ส.ส.5/18 (ตาราง)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Auto-submit to PVT Toggle */}
               <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 max-w-md">
@@ -1011,14 +1088,36 @@ export default function BatchOcr() {
                           <span className="ml-1 font-medium">{fileItem.result.spoiledBallots}</span>
                         </div>
                       </div>
+                      {/* Document type & scoring method */}
+                      {(fileItem.result.documentType || fileItem.result.scoringMethod) && (
+                        <div className="mt-2 flex items-center gap-2">
+                          {fileItem.result.documentType === 'ss5_11' && (
+                            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[10px]">📋 ส.ส.5/11 ขีดคะแนน</Badge>
+                          )}
+                          {fileItem.result.documentType === 'ss5_18' && (
+                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">📄 ส.ส.5/18 ตาราง</Badge>
+                          )}
+                          {fileItem.result.scoringMethod === 'tally' && (
+                            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">Tally Marks</Badge>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2 pt-2 border-t border-border">
                         <div className="text-xs text-muted-foreground mb-1">คะแนน:</div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-1">
                           {fileItem.result.votes?.map((vote: any, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              #{vote.candidateNumber}: {vote.voteCount}
-                              <span className="ml-1 text-muted-foreground">({vote.confidence}%)</span>
-                            </Badge>
+                            <div key={idx} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                #{vote.candidateNumber}: {vote.voteCount}
+                                <span className="ml-1 text-muted-foreground">({vote.confidence}%)</span>
+                              </Badge>
+                              {vote.candidateName && vote.candidateName !== 'Unknown' && (
+                                <span className="text-xs text-muted-foreground">{vote.candidateName}</span>
+                              )}
+                              {vote.tallyBreakdown && (
+                                <span className="text-[10px] text-orange-400/70 font-mono">[{vote.tallyBreakdown}]</span>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>

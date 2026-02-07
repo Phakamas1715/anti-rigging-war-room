@@ -1362,6 +1362,7 @@ export const appRouter = router({
         base64Image: z.string(),
         provider: z.enum(['huggingface', 'deepseek', 'gemini']),
         apiKey: z.string().optional(),
+        ocrMode: z.enum(['auto', 'tally', 'numeric', 'ss5_11', 'ss5_18']).optional(),
       }))
       .mutation(async ({ input }) => {
         const startTime = Date.now();
@@ -1372,7 +1373,7 @@ export const appRouter = router({
           if (input.provider === 'gemini') {
             // Use built-in Gemini API (no API key needed)
             const { analyzeWithGemini, validateOcrResult } = await import('./geminiOcr');
-            result = await analyzeWithGemini(input.base64Image);
+            result = await analyzeWithGemini(input.base64Image, input.ocrMode || 'auto');
             validation = validateOcrResult(result);
           } else {
             const { analyzeWithHuggingFace, analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
