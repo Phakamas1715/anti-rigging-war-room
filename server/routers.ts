@@ -1360,7 +1360,7 @@ export const appRouter = router({
         fileId: z.string(),
         fileName: z.string(),
         base64Image: z.string(),
-        provider: z.enum(['huggingface', 'deepseek', 'gemini']),
+        provider: z.enum(['huggingface', 'deepseek', 'gemini', 'hf-qwen']),
         apiKey: z.string().optional(),
         ocrMode: z.enum(['auto', 'tally', 'numeric', 'ss5_11', 'ss5_18']).optional(),
       }))
@@ -1375,6 +1375,12 @@ export const appRouter = router({
             const { analyzeWithGemini, validateOcrResult } = await import('./geminiOcr');
             result = await analyzeWithGemini(input.base64Image, input.ocrMode || 'auto');
             validation = validateOcrResult(result);
+          } else if (input.provider === 'hf-qwen') {
+            // Use Hugging Face Qwen2-VL OCR (with HF_API_TOKEN from env)
+            const { analyzeWithHF, validateHFOcrResult } = await import('./hfOcr');
+            const hfToken = input.apiKey || process.env.HF_API_TOKEN || '';
+            result = await analyzeWithHF(input.base64Image, hfToken, input.ocrMode || 'auto');
+            validation = validateHFOcrResult(result);
           } else {
             const { analyzeWithHuggingFace, analyzeVoteCountingBoard, validateOcrResult, base64ToDataUrl } = await import('./deepseekOcr');
             
@@ -1407,6 +1413,44 @@ export const appRouter = router({
             error: error.message || 'OCR processing failed',
           };
         }
+      }),
+
+    // Cross-validate ส.ส.5/11 vs ส.ส.5/18 from same polling station
+    crossValidate: protectedProcedure
+      .input(z.object({
+        tallyResult: z.object({
+          stationCode: z.string().optional(),
+          totalVoters: z.number().optional(),
+          totalBallots: z.number().optional(),
+          spoiledBallots: z.number().optional(),
+          votes: z.array(z.object({
+            candidateNumber: z.number(),
+            candidateName: z.string(),
+            voteCount: z.number(),
+            confidence: z.number(),
+          })),
+        }),
+        formResult: z.object({
+          stationCode: z.string().optional(),
+          totalVoters: z.number().optional(),
+          totalBallots: z.number().optional(),
+          spoiledBallots: z.number().optional(),
+          votes: z.array(z.object({
+            candidateNumber: z.number(),
+            candidateName: z.string(),
+            voteCount: z.number(),
+            confidence: z.number(),
+          })),
+        }),
+        tolerance: z.number().min(0).max(10).default(2),
+      }))
+      .mutation(async ({ input }) => {
+        const { crossValidate } = await import('./hfOcr');
+        return crossValidate(
+          { success: true, ...input.tallyResult },
+          { success: true, ...input.formResult },
+          input.tolerance
+        );
       }),
 
     // Generate demo batch results

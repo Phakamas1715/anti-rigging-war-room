@@ -50,9 +50,12 @@ export default function BatchOcr() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [provider, setProvider] = useState<'huggingface' | 'deepseek' | 'gemini'>('gemini');
+  const [provider, setProvider] = useState<'huggingface' | 'deepseek' | 'gemini' | 'hf-qwen'>('gemini');
   const [apiKey, setApiKey] = useState('');
   const [ocrMode, setOcrMode] = useState<'auto' | 'tally' | 'numeric' | 'ss5_11' | 'ss5_18'>('auto');
+  const [crossValidateMode, setCrossValidateMode] = useState(false);
+  const [tallyResults, setTallyResults] = useState<any[]>([]);
+  const [formResults, setFormResults] = useState<any[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [autoSubmitPVT, setAutoSubmitPVT] = useState(false);
   const [isSubmittingPVT, setIsSubmittingPVT] = useState(false);
@@ -257,7 +260,7 @@ export default function BatchOcr() {
   // Process all files
   const processFiles = async () => {
     // Gemini doesn't need API key, others do
-    if (provider !== 'gemini' && !apiKey) {
+    if (provider !== 'gemini' && provider !== 'hf-qwen' && !apiKey) {
       toast.error('กรุณาใส่ API Key ก่อนเริ่มประมวลผล');
       setShowSettings(true);
       return;
@@ -291,7 +294,7 @@ export default function BatchOcr() {
           base64Image,
           provider,
           apiKey,
-          ocrMode: provider === 'gemini' ? ocrMode : undefined,
+          ocrMode: (provider === 'gemini' || provider === 'hf-qwen') ? ocrMode : undefined,
         });
 
         const updatedFile = {
@@ -554,18 +557,28 @@ export default function BatchOcr() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* OCR Provider Settings */}
-              <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek' | 'gemini')}>
-                <TabsList className="grid w-full grid-cols-3 max-w-md">
+              <Tabs value={provider} onValueChange={(v) => setProvider(v as 'huggingface' | 'deepseek' | 'gemini' | 'hf-qwen')}>
+                <TabsList className="grid w-full grid-cols-4 max-w-lg">
                   <TabsTrigger value="gemini" className="text-green-500 data-[state=active]:bg-green-500/20">✨ Gemini</TabsTrigger>
-                  <TabsTrigger value="huggingface">Hugging Face</TabsTrigger>
+                  <TabsTrigger value="hf-qwen" className="text-purple-500 data-[state=active]:bg-purple-500/20">🤗 HF-Qwen</TabsTrigger>
+                  <TabsTrigger value="huggingface">HF Legacy</TabsTrigger>
                   <TabsTrigger value="deepseek">DeepSeek</TabsTrigger>
                 </TabsList>
                 <div className="mt-4 max-w-md">
                   {provider === 'gemini' ? (
                     <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
                       <p className="text-sm text-green-500 font-medium">✅ พร้อมใช้งาน - ไม่ต้องใส่ API Key</p>
+                      <p className="text-xs text-green-400/70 mt-1">รองรับ ส.ส.5/11 (ขีดคะแนน) และ ส.ส.5/18 (ตาราง) พร้อม Cross-validation</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         ใช้ Gemini 2.5 Flash Vision ที่ติดตั้งในระบบแล้ว
+                      </p>
+                    </div>
+                  ) : provider === 'hf-qwen' ? (
+                    <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                      <p className="text-sm text-purple-500 font-medium">🤗 HF Qwen2-VL OCR - พร้อมใช้งาน</p>
+                      <p className="text-xs text-purple-400/70 mt-1">ใช้ Qwen2-VL-OCR-2B ผ่าน Hugging Face Inference API</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        รองรับ ส.ส.5/11 + ส.ส.5/18 พร้อม TrOCR fallback สำหรับลายมือ
                       </p>
                     </div>
                   ) : (
@@ -587,7 +600,7 @@ export default function BatchOcr() {
               </Tabs>
 
               {/* OCR Document Type Selector (Gemini only) */}
-              {provider === 'gemini' && (
+              {(provider === 'gemini' || provider === 'hf-qwen') && (
                 <div className="border-t border-border pt-4">
                   <h3 className="text-base font-medium mb-3 flex items-center gap-2">
                     <FileSpreadsheet className="w-4 h-4" />
@@ -658,6 +671,34 @@ export default function BatchOcr() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Cross-validation Mode Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 max-w-md">
+                <div className="space-y-0.5">
+                  <Label htmlFor="cross-validate" className="text-base font-medium text-amber-500">
+                    ⚖️ Cross-validation Mode
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    เปรียบเทียบผล ส.ส.5/11 กับ ส.ส.5/18 จากหน่วยเดียวกันอัตโนมัติ
+                  </p>
+                </div>
+                <Switch
+                  id="cross-validate"
+                  checked={crossValidateMode}
+                  onCheckedChange={setCrossValidateMode}
+                />
+              </div>
+
+              {crossValidateMode && (
+                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 max-w-md">
+                  <p className="text-xs text-amber-400 font-medium mb-2">📋 วิธีใช้งาน Cross-validation:</p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>อัพโหลดภาพ ส.ส.5/11 (กระดานขีดคะแนน) และ ส.ส.5/18 (แบบฟอร์ม) จากหน่วยเดียวกัน</li>
+                    <li>ตั้งชื่อไฟล์ให้มีคำว่า "5-11" หรือ "5-18" เพื่อจับคู่อัตโนมัติ</li>
+                    <li>ระบบจะเปรียบเทียบคะแนนแต่ละผู้สมัครและแจ้งเตือนหากไม่ตรงกัน</li>
+                  </ol>
                 </div>
               )}
 

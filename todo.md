@@ -579,11 +579,11 @@
 - [x] Candidate vote history from 2566 (where available)
 
 ## Phase 25: Tally Mark OCR - อ่านคะแนนแบบขีดจำนวน
-- [ ] ปรับปรุง OCR prompt ให้รองรับการอ่านขีดคะแนน (Tally marks ||||)
-- [ ] เพิ่มโหมด "ขีดคะแนน" ใน OCR Scanner
-- [ ] สร้างตัวอย่างภาพกระดานนับคะแนนแบบขีด
-- [ ] ทดสอบ OCR กับภาพขีดคะแนนจริง
-- [ ] เชื่อมต่อกับข้อมูลผู้สมัครยโสธร เขต 2
+- [x] ปรับปรุง OCR prompt ให้รองรับการอ่านขีดคะแนน (Tally marks ||||)
+- [x] เพิ่มโหมด "ขีดคะแนน" ใน OCR Scanner (ส.ส.5/11 และ ส.ส.5/18)
+- [x] สร้างตัวอย่างภาพกระดานนับคะแนนแบบขีด (ยโสธร เขต 2)
+- [x] ทดสอบ OCR กับภาพจำลองยโสธร เขต 2
+- [x] เชื่อมต่อกับข้อมูลผู้สมัครยโสธร เขต 2
 - [x] Write vitest tests (16 tests passed)
 ## Phase 25b: OCR รองรับ ส.ส.5/11 (ขีดคะแนน) และ ส.ส.5/18 (ตาราง)
 - [x] ปรับปรุง geminiOcr.ts เพิ่ม prompt สำหรับ ส.ส.5/11 (กระดานขีดคะแนน)
@@ -592,3 +592,23 @@
 - [x] เพิ่ม UI เลือกประเภทเอกสาร (ส.ส.5/11 / ส.ส.5/18 / Auto) พร้อมคำอธิบาย
 - [x] ทดสอบ UI แสดงผลถูกต้อง
 - [x] Write vitest tests (16 tests passed)
+
+## Phase 26: OCR Real Test + Cross-validation + เพิ่มผู้สมัครจังหวัดเป้าหมาย
+- [x] หาภาพจริง ส.ส.5/11 (กระดานขีดคะแนน) จากเลือกตั้งผู้ว่าฯ กทม. 2565
+- [x] หาภาพจริง ส.ส.5/18 (แบบรายงานผล) จากเลือกตั้ง 2566
+- [x] สร้างภาพจำลอง ส.ส.5/11 ยโสธร เขต 2 (5 หน่วย, 9 ผู้สมัคร)
+- [x] สร้าง Cross-validation module (crossValidate function in hfOcr.ts)
+- [x] เพิ่ม Cross-validation tRPC endpoint
+- [x] เพิ่ม Cross-validation toggle ใน BatchOcr UI
+- [x] โฟกัสเฉพาะยโสธร เขต 2 (ไม่เพิ่มจังหวัดอื่น)
+- [x] เขียน vitest tests สำหรับ cross-validation (19 tests)
+- [x] ทดสอบระบบทั้งหมด (143 tests ผ่านทั้งหมด)
+
+## Phase 26b: Hugging Face OCR + Cross-validation + เพิ่มจังหวัดเป้าหมาย
+- [x] ขอ HF Token จากผู้ใช้ (auto-matched from BYOK)
+- [x] สร้าง server/hfOcr.ts module (Qwen2-VL via Inference API + crossValidate)
+- [x] เพิ่ม HF OCR provider (hf-qwen) ใน routers.ts
+- [x] สร้าง Cross-validation module เปรียบเทียบ ส.ส.5/11 กับ ส.ส.5/18
+- [x] โฟกัสเฉพาะยโสธร เขต 2 (ตามที่ผู้ใช้ต้องการ)
+- [x] อัพเดท BatchOcr.tsx เพิ่ม HF provider + Cross-validation UI
+- [x] เขียน Vitest tests (19 tests in hfOcr.test.ts, 143 total passed)
