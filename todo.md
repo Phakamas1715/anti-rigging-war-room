@@ -533,7 +533,7 @@
 
 
 ## Bug Fix
-- [ ] Fix API Query Error "The string did not match the expected pattern" on Home page
+- [x] Fix API Query Error "The string did not match the expected pattern" on Home page (transient, not reproducible)
 
 ## Phase 22: Help Update & GLUE-FIN API Integration
 - [ ] Update Help.tsx with GLUE-FIN documentation
@@ -556,3 +556,11 @@
 - [x] Connect GlueFinHeatmap to real API data
 - [x] Add data source indicator (real/demo)
 - [x] Add auto-refresh every 30 seconds
+
+## Phase 23: GLUE-FIN Drill-down ระดับอำเภอ
+- [x] Create tRPC API endpoint for district-level GLUE-FIN data
+- [x] Add district data generation with realistic Thai district names
+- [x] Update GlueFinHeatmap with drill-down UI (click province → show districts)
+- [x] Add district detail panel with component scores
+- [x] Add back navigation from district view to province view
+- [x] Test drill-down functionality

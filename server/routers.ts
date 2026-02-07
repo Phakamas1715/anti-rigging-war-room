@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { calculateGlueFin } from './glueFin';
 import { 
   createPollingStation, getPollingStations, getPollingStationByCode,
   createElectionData, getElectionDataForAnalysis, getElectionDataByStation,
@@ -2352,6 +2353,123 @@ export const appRouter = router({
         return calculateGlueFin(input);
       }),
 
+    // Drill-down: Analyze districts within a province
+    analyzeDistricts: publicProcedure
+      .input(z.object({
+        provinceCode: z.string(),
+        provinceName: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const { calculateGlueFin } = await import('./glueFin');
+        const allData = await getElectionDataForAnalysis();
+        
+        // Get stations for this province
+        const allStations = await getPollingStations();
+        const stations = allStations.filter(s => s.province === input.provinceName);
+        
+        // Group stations by district
+        const districtMap = new Map<string, typeof stations>();
+        stations.forEach(s => {
+          const existing = districtMap.get(s.district) || [];
+          existing.push(s);
+          districtMap.set(s.district, existing);
+        });
+
+        const hasRealData = stations.length > 0;
+
+        // If no real data, generate demo districts
+        if (!hasRealData) {
+          const demoDistricts = generateDemoDistricts(input.provinceName);
+          return {
+            provinceCode: input.provinceCode,
+            provinceName: input.provinceName,
+            districts: demoDistricts,
+            summary: {
+              totalDistricts: demoDistricts.length,
+              totalStations: demoDistricts.reduce((sum, d) => sum + d.stationCount, 0),
+              byLevel: {
+                normal: demoDistricts.filter(d => d.level === 'normal').length,
+                review: demoDistricts.filter(d => d.level === 'review').length,
+                suspicious: demoDistricts.filter(d => d.level === 'suspicious').length,
+                critical: demoDistricts.filter(d => d.level === 'critical').length,
+                crisis: demoDistricts.filter(d => d.level === 'crisis').length,
+              },
+              averageScore: Math.round(demoDistricts.reduce((sum, d) => sum + d.score, 0) / demoDistricts.length * 10) / 10,
+            },
+            dataSource: 'demo' as const,
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+
+        // Real data: analyze each district
+        const districtResults = Array.from(districtMap.entries()).map(([districtName, districtStations]) => {
+          const stationIds = districtStations.map(s => s.id);
+          const districtElectionData = allData.filter(d => stationIds.includes(d.stationId));
+
+          let klimekAlpha = 0, klimekBeta = 0, benfordChi = 0, pvtGap = 0;
+          let ocrConfidence = 85;
+
+          if (districtElectionData.length > 0) {
+            const analysisData = districtElectionData.map(d => ({
+              turnout: parseFloat(d.turnout?.toString() || '0'),
+              voteShare: parseFloat(d.candidateAShare?.toString() || '0'),
+            }));
+            const klimek = calculateKlimekAnalysis(analysisData);
+            klimekAlpha = klimek.alpha;
+            klimekBeta = klimek.beta;
+
+            const voteCounts = districtElectionData.map(d => d.candidateAVotes || 0).filter(v => v > 10);
+            if (voteCounts.length > 0) {
+              benfordChi = calculateBenfordAnalysis(voteCounts).chiSquare;
+            }
+          }
+
+          const result = calculateGlueFin({
+            ocrConfidence,
+            klimekAlpha,
+            klimekBeta,
+            benfordChiSquare: benfordChi,
+            pvtGapPercentage: pvtGap,
+            snaCentrality: 0,
+          });
+
+          return {
+            districtName,
+            stationCount: districtStations.length,
+            dataPoints: districtElectionData.length,
+            score: result.score,
+            level: result.level,
+            levelEmoji: result.levelEmoji,
+            levelDescription: result.levelDescription,
+            recommendation: result.recommendation,
+            components: result.components,
+            formula: result.formula,
+          };
+        });
+
+        districtResults.sort((a, b) => b.score - a.score);
+
+        return {
+          provinceCode: input.provinceCode,
+          provinceName: input.provinceName,
+          districts: districtResults,
+          summary: {
+            totalDistricts: districtResults.length,
+            totalStations: stations.length,
+            byLevel: {
+              normal: districtResults.filter(d => d.level === 'normal').length,
+              review: districtResults.filter(d => d.level === 'review').length,
+              suspicious: districtResults.filter(d => d.level === 'suspicious').length,
+              critical: districtResults.filter(d => d.level === 'critical').length,
+              crisis: districtResults.filter(d => d.level === 'crisis').length,
+            },
+            averageScore: Math.round(districtResults.reduce((sum, d) => sum + d.score, 0) / districtResults.length * 10) / 10,
+          },
+          dataSource: 'real' as const,
+          lastUpdated: new Date().toISOString(),
+        };
+      }),
+
     // Get GLUE-FIN weights configuration
     getWeights: publicProcedure.query(async () => {
       const { DEFAULT_WEIGHTS, THRESHOLDS } = await import('./glueFin');
@@ -2405,6 +2523,73 @@ function generateDemoNetworkData() {
   }
   
   return transactions;
+}
+
+// Generate demo districts for a province
+function generateDemoDistricts(provinceName: string) {
+  
+  // Demo district names based on province
+  const districtTemplates: Record<string, string[]> = {
+    'กรุงเทพมหานคร': ['พระนคร', 'ดุสิต', 'หนองจอก', 'บางรัก', 'บางเขน', 'บางกะปิ', 'ปทุมวัน', 'ป้อมปราบฯ', 'พระโขนง', 'มีนบุรี', 'ลาดกระบัง', 'ยานนาวา'],
+    'เชียงใหม่': ['เมืองเชียงใหม่', 'จอมทอง', 'แม่แจ่ม', 'เชียงดาว', 'ดอยสะเก็ด', 'แม่แตง', 'แม่ริม', 'สะเมิง', 'ฝาง', 'แม่อาย', 'พร้าว', 'สันป่าตอง'],
+    'เชียงราย': ['เมืองเชียงราย', 'เวียงชัย', 'เชียงของ', 'เทิง', 'พาน', 'ป่าแดด', 'แม่จัน', 'เชียงแสน', 'แม่สาย', 'แม่สรวย', 'เวียงป่าเป้า', 'พญาเม็งราย'],
+    'นครราชสีมา': ['เมืองนครราชสีมา', 'ครบุรี', 'เสิงสาง', 'คง', 'บ้านเหลื่อม', 'จักราช', 'โชคชัย', 'ด่านขุนทด', 'โนนไทย', 'โนนสูง', 'ขามสะแกแสง', 'บัวใหญ่'],
+    'ขอนแก่น': ['เมืองขอนแก่น', 'บ้านฝาง', 'พระยืน', 'หนองเรือ', 'ชุมแพ', 'สีชมพู', 'น้ำพอง', 'อุบลรัตน์', 'กระนวน', 'บ้านไผ่', 'เปือยน้อย', 'พล'],
+    'สงขลา': ['เมืองสงขลา', 'สทิงพระ', 'จะนะ', 'นาทวี', 'เทพา', 'สะบ้าย้อย', 'ระโนด', 'กระแสสินธุ์', 'รัตภูมิ', 'สะเดา', 'หาดใหญ่', 'นาหม่อม'],
+  };
+
+  // Get district names or generate generic ones
+  const districts = districtTemplates[provinceName] || 
+    Array.from({ length: 8 + Math.floor(Math.random() * 5) }, (_, i) => `อำเภอ ${i + 1}`);
+
+  return districts.map((districtName, index) => {
+    // Seed-based pseudo-random for consistency
+    const seed = (provinceName.charCodeAt(0) * 31 + index * 17) % 100;
+    const isSuspicious = seed > 85;
+    const isReview = seed > 70 && seed <= 85;
+
+    let klimekAlpha = 0, klimekBeta = 0, benfordChi = 0, pvtGap = 0;
+    let ocrConfidence = 80 + Math.random() * 15;
+
+    if (isSuspicious) {
+      klimekAlpha = 0.06 + Math.random() * 0.04;
+      klimekBeta = 0.03 + Math.random() * 0.03;
+      benfordChi = 12 + Math.random() * 10;
+      pvtGap = 3 + Math.random() * 3;
+    } else if (isReview) {
+      klimekAlpha = 0.02 + Math.random() * 0.03;
+      klimekBeta = 0.01 + Math.random() * 0.02;
+      benfordChi = 5 + Math.random() * 8;
+      pvtGap = 1 + Math.random() * 2;
+    } else {
+      klimekAlpha = Math.random() * 0.02;
+      klimekBeta = Math.random() * 0.01;
+      benfordChi = Math.random() * 5;
+      pvtGap = Math.random() * 1;
+    }
+
+    const result = calculateGlueFin({
+      ocrConfidence,
+      klimekAlpha,
+      klimekBeta,
+      benfordChiSquare: benfordChi,
+      pvtGapPercentage: pvtGap,
+      snaCentrality: 0,
+    });
+
+    return {
+      districtName,
+      stationCount: 15 + Math.floor(Math.random() * 30),
+      dataPoints: 10 + Math.floor(Math.random() * 25),
+      score: result.score,
+      level: result.level,
+      levelEmoji: result.levelEmoji,
+      levelDescription: result.levelDescription,
+      recommendation: result.recommendation,
+      components: result.components,
+      formula: result.formula,
+    };
+  });
 }
 
 export type AppRouter = typeof appRouter;

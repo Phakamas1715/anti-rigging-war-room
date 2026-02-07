@@ -3,17 +3,17 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, AlertTriangle, CheckCircle, Info, Shield, TrendingUp, Database, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, MapPin, AlertTriangle, CheckCircle, Info, Shield, TrendingUp, Database, Loader2, RefreshCw, ChevronRight, ChevronDown, Building2, BarChart3 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
 
 // GLUE-FIN Level Colors
 const GLUEFIN_COLORS = {
-  normal: "#22c55e",      // Green - 0-20
-  review: "#eab308",      // Yellow - 21-40
-  suspicious: "#f97316",  // Orange - 41-60
-  critical: "#ef4444",    // Red - 61-80
-  crisis: "#1f2937",      // Dark - 81-100
+  normal: "#22c55e",
+  review: "#eab308",
+  suspicious: "#f97316",
+  critical: "#ef4444",
+  crisis: "#1f2937",
 };
 
 const GLUEFIN_LEVELS = {
@@ -26,7 +26,6 @@ const GLUEFIN_LEVELS = {
 
 // Thailand provinces with region mapping
 const THAILAND_PROVINCES = [
-  // ภาคเหนือ (17 จังหวัด)
   { code: "CMI", name: "เชียงใหม่", region: "north", row: 0, col: 2 },
   { code: "LPN", name: "ลำพูน", region: "north", row: 1, col: 2 },
   { code: "LPG", name: "ลำปาง", region: "north", row: 1, col: 3 },
@@ -44,8 +43,6 @@ const THAILAND_PROVINCES = [
   { code: "PHR", name: "เพชรบูรณ์", region: "north", row: 3, col: 5 },
   { code: "NSN", name: "นครสวรรค์", region: "north", row: 4, col: 3 },
   { code: "UTI", name: "อุทัยธานี", region: "north", row: 4, col: 2 },
-  
-  // ภาคตะวันออกเฉียงเหนือ (20 จังหวัด)
   { code: "NMA", name: "นครราชสีมา", region: "northeast", row: 5, col: 5 },
   { code: "BRM", name: "บุรีรัมย์", region: "northeast", row: 5, col: 6 },
   { code: "SRN", name: "สุรินทร์", region: "northeast", row: 5, col: 7 },
@@ -66,8 +63,6 @@ const THAILAND_PROVINCES = [
   { code: "RET", name: "ร้อยเอ็ด", region: "northeast", row: 4, col: 8 },
   { code: "KSN", name: "กาฬสินธุ์", region: "northeast", row: 3, col: 7 },
   { code: "CPM", name: "ชัยภูมิ", region: "northeast", row: 4, col: 5 },
-  
-  // ภาคกลาง (22 จังหวัด)
   { code: "BKK", name: "กรุงเทพฯ", region: "central", row: 6, col: 3 },
   { code: "NPT", name: "นนทบุรี", region: "central", row: 5, col: 3 },
   { code: "PTM", name: "ปทุมธานี", region: "central", row: 5, col: 4 },
@@ -90,14 +85,10 @@ const THAILAND_PROVINCES = [
   { code: "PKK", name: "ประจวบคีรีขันธ์", region: "central", row: 9, col: 1 },
   { code: "SMP", name: "สมุทรปราการ", region: "central", row: 7, col: 3 },
   { code: "CCO", name: "ฉะเชิงเทรา", region: "central", row: 7, col: 4 },
-  
-  // ภาคตะวันออก (4 จังหวัด)
   { code: "CBI", name: "ชลบุรี", region: "east", row: 8, col: 4 },
   { code: "RYG", name: "ระยอง", region: "east", row: 8, col: 5 },
   { code: "CTI", name: "จันทบุรี", region: "east", row: 9, col: 5 },
   { code: "TRT", name: "ตราด", region: "east", row: 9, col: 6 },
-  
-  // ภาคใต้ (14 จังหวัด)
   { code: "CPN", name: "ชุมพร", region: "south", row: 10, col: 2 },
   { code: "RNG", name: "ระนอง", region: "south", row: 10, col: 1 },
   { code: "SNI", name: "สุราษฎร์ธานี", region: "south", row: 11, col: 2 },
@@ -127,25 +118,337 @@ function getGlueFinColor(score: number): string {
   return GLUEFIN_COLORS[level];
 }
 
+// District Drill-down Component
+function DistrictDrilldown({ provinceCode, provinceName, onClose }: { provinceCode: string; provinceName: string; onClose: () => void }) {
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'score' | 'name'>('score');
+
+  const { data: districtData, isLoading } = trpc.glueFin.analyzeDistricts.useQuery(
+    { provinceCode, provinceName },
+    { refetchInterval: 30000 }
+  );
+
+  const sortedDistricts = useMemo(() => {
+    if (!districtData?.districts) return [];
+    const districts = [...districtData.districts];
+    if (sortBy === 'score') {
+      districts.sort((a, b) => b.score - a.score);
+    } else {
+      districts.sort((a, b) => a.districtName.localeCompare(b.districtName, 'th'));
+    }
+    return districts;
+  }, [districtData, sortBy]);
+
+  const selectedDistrictData = districtData?.districts.find(d => d.districtName === selectedDistrict);
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card/50 border-border/50">
+        <CardContent className="py-12">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto" />
+            <p className="text-muted-foreground">กำลังวิเคราะห์อำเภอใน {provinceName}...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!districtData) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose} className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                กลับ
+              </Button>
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Building2 className="h-5 w-5 text-orange-500" />
+                  Drill-down: {provinceName}
+                </CardTitle>
+                <CardDescription>
+                  {districtData.summary.totalDistricts} อำเภอ | {districtData.summary.totalStations} หน่วย
+                </CardDescription>
+              </div>
+            </div>
+            <Badge variant="outline" className="gap-1">
+              <Database className="h-3 w-3" />
+              {districtData.dataSource === 'real' ? (
+                <span className="text-green-500">ข้อมูลจริง</span>
+              ) : (
+                <span className="text-yellow-500">ข้อมูลจำลอง</span>
+              )}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-5 gap-2 text-center">
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <div className="text-lg font-bold text-green-500">{districtData.summary.byLevel.normal}</div>
+              <div className="text-xs text-muted-foreground">🟢 ปกติ</div>
+            </div>
+            <div className="p-2 rounded-lg bg-yellow-500/10">
+              <div className="text-lg font-bold text-yellow-500">{districtData.summary.byLevel.review}</div>
+              <div className="text-xs text-muted-foreground">🟡 ตรวจสอบ</div>
+            </div>
+            <div className="p-2 rounded-lg bg-orange-500/10">
+              <div className="text-lg font-bold text-orange-500">{districtData.summary.byLevel.suspicious}</div>
+              <div className="text-xs text-muted-foreground">🟠 น่าสงสัย</div>
+            </div>
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <div className="text-lg font-bold text-red-500">{districtData.summary.byLevel.critical}</div>
+              <div className="text-xs text-muted-foreground">🔴 วิกฤต</div>
+            </div>
+            <div className="p-2 rounded-lg bg-muted/50">
+              <div className="text-lg font-bold text-foreground">{districtData.summary.averageScore}</div>
+              <div className="text-xs text-muted-foreground">คะแนนเฉลี่ย</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* District List & Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* District List */}
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-orange-500" />
+                รายชื่ออำเภอ
+              </CardTitle>
+              <div className="flex gap-1">
+                <Button
+                  variant={sortBy === 'score' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setSortBy('score')}
+                >
+                  คะแนน
+                </Button>
+                <Button
+                  variant={sortBy === 'name' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setSortBy('name')}
+                >
+                  ชื่อ
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1">
+              {sortedDistricts.map((district) => {
+                const isSelected = selectedDistrict === district.districtName;
+                const color = getGlueFinColor(district.score);
+                return (
+                  <button
+                    key={district.districtName}
+                    onClick={() => setSelectedDistrict(district.districtName)}
+                    className={`
+                      w-full flex items-center justify-between p-3 rounded-lg text-left
+                      transition-all duration-150 hover:bg-muted/50
+                      ${isSelected ? "bg-muted/50 ring-1 ring-orange-500/50" : ""}
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{district.districtName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {district.stationCount} หน่วย | {district.dataPoints} records
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                        style={{ borderColor: color, color }}
+                      >
+                        {district.score}
+                      </Badge>
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isSelected ? 'rotate-90' : ''}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* District Details */}
+        <div className="space-y-4">
+          {selectedDistrictData ? (
+            <>
+              <Card className="bg-card/50 border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="text-xl">{selectedDistrictData.levelEmoji}</span>
+                    {selectedDistrictData.districtName}
+                  </CardTitle>
+                  <CardDescription>
+                    {provinceName} | {selectedDistrictData.stationCount} หน่วยเลือกตั้ง
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Score Display */}
+                  <div
+                    className="text-center p-4 rounded-lg"
+                    style={{ backgroundColor: `${getGlueFinColor(selectedDistrictData.score)}15` }}
+                  >
+                    <p className="text-sm text-muted-foreground">GLUE-FIN Score</p>
+                    <p
+                      className="text-4xl font-bold"
+                      style={{ color: getGlueFinColor(selectedDistrictData.score) }}
+                    >
+                      {selectedDistrictData.score}
+                    </p>
+                    <Badge
+                      className="mt-2"
+                      style={{ backgroundColor: getGlueFinColor(selectedDistrictData.score) }}
+                    >
+                      {selectedDistrictData.levelDescription}
+                    </Badge>
+                  </div>
+
+                  {/* Recommendation */}
+                  {selectedDistrictData.recommendation && (
+                    <div className="p-3 bg-muted/30 rounded-lg text-sm">
+                      <p className="font-medium text-foreground mb-1">คำแนะนำ:</p>
+                      <p className="text-muted-foreground">{selectedDistrictData.recommendation}</p>
+                    </div>
+                  )}
+
+                  {/* Component Scores */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">Component Scores:</p>
+                    <div className="space-y-2">
+                      {selectedDistrictData.components.map((comp: { name: string; weight: number; rawValue?: number; normalizedValue: number; contribution: number }) => (
+                        <div key={comp.name} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{comp.name} ({(comp.weight * 100).toFixed(0)}%)</span>
+                            <span className="font-medium">{typeof comp.normalizedValue === 'number' ? comp.normalizedValue.toFixed(1) : '0.0'}</span>
+                          </div>
+                          <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.min(comp.normalizedValue ?? 0, 100)}%`,
+                                backgroundColor: (comp.normalizedValue ?? 0) > 60 ? '#ef4444' : (comp.normalizedValue ?? 0) > 30 ? '#f97316' : '#22c55e',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Formula */}
+                  {selectedDistrictData.formula && (
+                    <div className="p-2 bg-muted/30 rounded text-xs font-mono text-muted-foreground break-all">
+                      {selectedDistrictData.formula}
+                    </div>
+                  )}
+
+                  {/* Warning */}
+                  {(selectedDistrictData.level === "critical" || selectedDistrictData.level === "crisis") && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <p className="text-sm text-red-400">
+                        <AlertTriangle className="h-4 w-4 inline mr-1" />
+                        อำเภอนี้มีคะแนน GLUE-FIN สูง ต้องตรวจสอบเพิ่มเติม!
+                      </p>
+                    </div>
+                  )}
+                  {selectedDistrictData.level === "suspicious" && (
+                    <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                      <p className="text-sm text-orange-400">
+                        <AlertTriangle className="h-4 w-4 inline mr-1" />
+                        อำเภอนี้มีสัญญาณน่าสงสัย ควรตรวจสอบเพิ่มเติม
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card className="bg-card/50 border-border/50">
+              <CardContent className="py-16">
+                <div className="text-center text-muted-foreground">
+                  <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">เลือกอำเภอเพื่อดูรายละเอียด</p>
+                  <p className="text-sm mt-1">คลิกที่อำเภอในรายการด้านซ้าย</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* High Risk Districts */}
+          {districtData && sortedDistricts.filter(d => d.score > 30).length > 0 && (
+            <Card className="bg-card/50 border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  อำเภอที่ต้องตรวจสอบ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {sortedDistricts
+                    .filter(d => d.score > 30)
+                    .slice(0, 5)
+                    .map(d => (
+                      <div
+                        key={d.districtName}
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedDistrict(d.districtName)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{d.levelEmoji}</span>
+                          <span className="text-sm font-medium">{d.districtName}</span>
+                        </div>
+                        <span className="text-sm font-bold" style={{ color: getGlueFinColor(d.score) }}>
+                          {d.score}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GlueFinHeatmap() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [drilldownProvince, setDrilldownProvince] = useState<{ code: string; name: string } | null>(null);
 
   // Fetch real data from API
   const { data: apiData, isLoading, refetch, isFetching } = trpc.glueFin.analyzeAllProvinces.useQuery(undefined, {
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
   // Map API data to province grid
   const provinces = useMemo(() => {
     if (!apiData) return [];
-
     return THAILAND_PROVINCES.map(province => {
-      // Find matching province from API data
       const apiProvince = apiData.provinces.find(p => p.provinceName === province.name);
-
       const score = apiProvince?.score ?? 11.9;
       const level = getGlueFinLevel(score);
-
       return {
         ...province,
         glueFinScore: score,
@@ -156,13 +459,7 @@ export default function GlueFinHeatmap() {
           benford: apiProvince.components.find(c => c.name === "Benford's Law")?.rawValue ?? 0,
           pvt: apiProvince.components.find(c => c.name === 'PVT Gap')?.rawValue ?? 0,
           sna: apiProvince.components.find(c => c.name === 'SNA Centrality')?.rawValue ?? 0,
-        } : {
-          ocr: 85,
-          klimek: 0,
-          benford: 0,
-          pvt: 0,
-          sna: 0,
-        },
+        } : { ocr: 85, klimek: 0, benford: 0, pvt: 0, sna: 0 },
         levelDescription: apiProvince?.levelDescription ?? '',
         recommendation: apiProvince?.recommendation ?? '',
         formula: apiProvince?.formula ?? '',
@@ -172,7 +469,6 @@ export default function GlueFinHeatmap() {
 
   const selectedProvinceData = provinces.find(p => p.code === selectedProvince);
 
-  // Calculate stats
   const stats = useMemo(() => {
     if (apiData?.summary) {
       return {
@@ -182,14 +478,9 @@ export default function GlueFinHeatmap() {
         highRisk: (apiData.summary.byLevel.critical || 0) + (apiData.summary.byLevel.crisis || 0),
       };
     }
-
     const byLevel = { normal: 0, review: 0, suspicious: 0, critical: 0, crisis: 0 };
     let totalScore = 0;
-    provinces.forEach(p => {
-      byLevel[p.level]++;
-      totalScore += p.glueFinScore;
-    });
-
+    provinces.forEach(p => { byLevel[p.level]++; totalScore += p.glueFinScore; });
     return {
       total: provinces.length,
       byLevel,
@@ -198,9 +489,13 @@ export default function GlueFinHeatmap() {
     };
   }, [provinces, apiData]);
 
-  // Group provinces by row for grid layout
   const maxRow = Math.max(...THAILAND_PROVINCES.map(p => p.row));
   const maxCol = Math.max(...THAILAND_PROVINCES.map(p => p.col));
+
+  // Handle drill-down
+  const handleDrilldown = (code: string, name: string) => {
+    setDrilldownProvince({ code, name });
+  };
 
   return (
     <TooltipProvider>
@@ -217,10 +512,15 @@ export default function GlueFinHeatmap() {
               <div className="flex items-center gap-2">
                 <Shield className="h-6 w-6 text-orange-500" />
                 <h1 className="text-xl font-bold text-foreground">GLUE-FIN Heatmap</h1>
+                {drilldownProvince && (
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="text-sm">{drilldownProvince.name}</span>
+                  </div>
+                )}
               </div>
             </div>
             
-            {/* Data Source & Refresh */}
             <div className="flex items-center gap-3">
               {apiData && (
                 <Badge variant="outline" className="gap-1.5">
@@ -253,7 +553,17 @@ export default function GlueFinHeatmap() {
               <p className="text-muted-foreground">กำลังวิเคราะห์ GLUE-FIN Score...</p>
             </div>
           </div>
+        ) : drilldownProvince ? (
+          /* District Drill-down View */
+          <main className="container py-8">
+            <DistrictDrilldown
+              provinceCode={drilldownProvince.code}
+              provinceName={drilldownProvince.name}
+              onClose={() => setDrilldownProvince(null)}
+            />
+          </main>
         ) : (
+          /* Province Map View */
           <main className="container py-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -322,13 +632,11 @@ export default function GlueFinHeatmap() {
                       แผนที่ GLUE-FIN ประเทศไทย
                     </CardTitle>
                     <CardDescription>
-                      คลิกที่จังหวัดเพื่อดูรายละเอียด GLUE-FIN Score (ข้อมูลจาก API)
+                      คลิกที่จังหวัดเพื่อดูรายละเอียด | ดับเบิลคลิกเพื่อ Drill-down ดูระดับอำเภอ
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {/* Thailand Map Grid */}
                     <div className="relative bg-slate-900/50 rounded-lg p-6">
-                      {/* Grid Layout */}
                       <div 
                         className="grid gap-1"
                         style={{ 
@@ -353,6 +661,7 @@ export default function GlueFinHeatmap() {
                               <TooltipTrigger asChild>
                                 <button
                                   onClick={() => setSelectedProvince(province.code)}
+                                  onDoubleClick={() => handleDrilldown(province.code, province.name)}
                                   className={`
                                     aspect-square rounded-md transition-all duration-200
                                     hover:scale-110 hover:z-10 relative
@@ -377,6 +686,7 @@ export default function GlueFinHeatmap() {
                                   <p className="text-muted-foreground">
                                     {GLUEFIN_LEVELS[province.level].emoji} {GLUEFIN_LEVELS[province.level].name}
                                   </p>
+                                  <p className="text-xs text-blue-400 mt-1">ดับเบิลคลิกเพื่อดูอำเภอ</p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -438,11 +748,10 @@ export default function GlueFinHeatmap() {
                         </Badge>
                       </div>
 
-                      {/* Level Description & Recommendation */}
+                      {/* Level Description */}
                       {selectedProvinceData.levelDescription && (
                         <div className="p-3 bg-muted/30 rounded-lg text-sm">
                           <p className="text-muted-foreground">{selectedProvinceData.levelDescription}</p>
-                          <p className="mt-1 font-medium text-foreground">คำแนะนำ: {selectedProvinceData.recommendation}</p>
                         </div>
                       )}
 
@@ -473,6 +782,15 @@ export default function GlueFinHeatmap() {
                         </div>
                       </div>
 
+                      {/* Drill-down Button */}
+                      <Button
+                        className="w-full gap-2 bg-orange-500 hover:bg-orange-600"
+                        onClick={() => handleDrilldown(selectedProvinceData.code, selectedProvinceData.name)}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                        Drill-down ดูระดับอำเภอ
+                      </Button>
+
                       {/* Formula */}
                       {selectedProvinceData.formula && (
                         <div className="p-2 bg-muted/30 rounded text-xs font-mono text-muted-foreground break-all">
@@ -480,7 +798,7 @@ export default function GlueFinHeatmap() {
                         </div>
                       )}
 
-                      {/* Warning for high risk */}
+                      {/* Warning */}
                       {(selectedProvinceData.level === "critical" || selectedProvinceData.level === "suspicious") && (
                         <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                           <p className="text-sm text-orange-400">
@@ -489,7 +807,6 @@ export default function GlueFinHeatmap() {
                           </p>
                         </div>
                       )}
-                      
                       {selectedProvinceData.level === "crisis" && (
                         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                           <p className="text-sm text-red-400">
@@ -523,6 +840,7 @@ export default function GlueFinHeatmap() {
                             <button
                               key={province.code}
                               onClick={() => setSelectedProvince(province.code)}
+                              onDoubleClick={() => handleDrilldown(province.code, province.name)}
                               className={`
                                 w-full flex items-center justify-between p-3 rounded-lg
                                 transition-colors hover:bg-muted/50
