@@ -381,10 +381,89 @@ export function validateOcrResult(result: OcrResult): {
     if (roundVotes.length > result.votes.length / 2) {
       warnings.push('พบคะแนนเป็นจำนวนกลมหลายรายการ อาจนับขีดคะแนนไม่ถูกต้อง');
     }
+    // Validate tally breakdown matches voteCount
+    for (const v of result.votes) {
+      if (v.tallyBreakdown) {
+        const match = v.tallyBreakdown.match(/=\s*(\d+)/);
+        if (match) {
+          const breakdownTotal = parseInt(match[1]);
+          if (breakdownTotal !== v.voteCount) {
+            warnings.push(`ผู้สมัครหมายเลข ${v.candidateNumber}: tally breakdown (${breakdownTotal}) ไม่ตรงกับคะแนน (${v.voteCount})`);
+          }
+        }
+      }
+    }
+  }
+
+  // Check for duplicate candidate numbers
+  const candidateNums = result.votes.map(v => v.candidateNumber).filter(n => n > 0);
+  const uniqueNums = new Set(candidateNums);
+  if (uniqueNums.size < candidateNums.length) {
+    warnings.push('พบหมายเลขผู้สมัครซ้ำ กรุณาตรวจสอบ');
+  }
+
+  // Check for zero votes on all candidates (likely OCR failure)
+  const allZero = result.votes.every(v => v.voteCount === 0);
+  if (allZero && result.votes.length > 0) {
+    warnings.push('ผู้สมัครทุกคนได้ 0 คะแนน อาจเป็นข้อผิดพลาดจาก OCR');
   }
 
   return {
     isValid: warnings.length === 0,
     warnings
+  };
+}
+
+/**
+ * Double-check OCR result by running analysis twice and comparing
+ * Returns the result with higher overall confidence
+ */
+export async function doubleCheckOcr(
+  imageBase64: string,
+  mode: OcrMode = 'auto'
+): Promise<{ result: OcrResult; isConsistent: boolean; discrepancies: string[] }> {
+  const [result1, result2] = await Promise.all([
+    analyzeWithGemini(imageBase64, mode),
+    analyzeWithGemini(imageBase64, mode)
+  ]);
+
+  const discrepancies: string[] = [];
+
+  if (!result1.success || !result2.success) {
+    return {
+      result: result1.success ? result1 : result2,
+      isConsistent: false,
+      discrepancies: ['OCR ล้มเหลวในการวิเคราะห์รอบใดรอบหนึ่ง']
+    };
+  }
+
+  // Compare vote counts for each candidate
+  const maxLen = Math.max(result1.votes.length, result2.votes.length);
+  for (let i = 0; i < maxLen; i++) {
+    const v1 = result1.votes[i];
+    const v2 = result2.votes[i];
+    if (!v1 || !v2) {
+      discrepancies.push(`จำนวนผู้สมัครไม่ตรงกัน: รอบ 1 = ${result1.votes.length}, รอบ 2 = ${result2.votes.length}`);
+      break;
+    }
+    if (v1.voteCount !== v2.voteCount) {
+      const diff = Math.abs(v1.voteCount - v2.voteCount);
+      const maxVote = Math.max(v1.voteCount, v2.voteCount, 1);
+      const pctDiff = (diff / maxVote) * 100;
+      discrepancies.push(
+        `ผู้สมัคร #${v1.candidateNumber}: รอบ 1 = ${v1.voteCount}, รอบ 2 = ${v2.voteCount} (ต่าง ${pctDiff.toFixed(1)}%)`
+      );
+    }
+  }
+
+  // Pick the result with higher average confidence
+  const avgConf1 = result1.votes.reduce((s, v) => s + v.confidence, 0) / (result1.votes.length || 1);
+  const avgConf2 = result2.votes.reduce((s, v) => s + v.confidence, 0) / (result2.votes.length || 1);
+  const bestResult = avgConf1 >= avgConf2 ? result1 : result2;
+
+  return {
+    result: bestResult,
+    isConsistent: discrepancies.length === 0,
+    discrepancies
   };
 }

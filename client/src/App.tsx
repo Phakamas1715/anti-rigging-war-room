@@ -35,6 +35,8 @@ import DemoDashboard from "./pages/DemoDashboard";
 import PublicDemo from "./pages/PublicDemo";
 import GlueFinHeatmap from "./pages/GlueFinHeatmap";
 import ConstituencySearch from "./pages/ConstituencySearch";
+import YasothonDashboard from "./pages/YasothonDashboard";
+import AlertCenter from "./pages/AlertCenter";
 
 // Volunteer Pages
 import VolunteerApp from "./pages/VolunteerApp";
@@ -71,6 +73,8 @@ function Router() {
       <Route path={"/admin/demo"} component={DemoDashboard} />
       <Route path={"/admin/gluefin"} component={GlueFinHeatmap} />
       <Route path={"/admin/constituency"} component={ConstituencySearch} />
+      <Route path={"/admin/yasothon"} component={YasothonDashboard} />
+      <Route path={"/admin/alert-center"} component={AlertCenter} />
       <Route path={"/admin/evidence"} component={EvidenceUpload} />
       
       {/* Legacy Routes - Redirect to Admin */}

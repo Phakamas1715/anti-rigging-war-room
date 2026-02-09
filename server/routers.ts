@@ -20,7 +20,11 @@ import {
   createCrowdsourcedResult, getCrowdsourcedResults, getOfficialResults,
   createVolunteerCode, bulkCreateVolunteerCodes, loginWithVolunteerCode,
   getVolunteerCodeByCode, getVolunteerCodes, updateVolunteerCode,
-  deactivateVolunteerCode, getVolunteerCodeStats
+  deactivateVolunteerCode, getVolunteerCodeStats,
+  saveOcrResult, getOcrResultsByStation, getOcrResultsByConstituency, getOcrResultById,
+  getRecentOcrResults, getOcrStats,
+  saveCrossValidationAlert, getCrossValidationAlerts, getUnresolvedCrossValidationAlerts,
+  resolveCrossValidationAlert, getCrossValidationStats
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
@@ -2616,7 +2620,395 @@ export const appRouter = router({
     }),
   }),
 
+  // ============ ALERT SYSTEM ============
+  alertSystem: router({
+    // Get cross-validation alerts with filters
+    getAlerts: protectedProcedure
+      .input(z.object({
+        province: z.string().optional(),
+        constituency: z.string().optional(),
+        severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        isResolved: z.boolean().optional(),
+        limit: z.number().min(1).max(200).default(50),
+      }).optional())
+      .query(async ({ input }) => {
+        return getCrossValidationAlerts(input ? {
+          province: input.province,
+          constituency: input.constituency,
+          severity: input.severity,
+          isResolved: input.isResolved,
+        } : undefined, input?.limit || 50);
+      }),
+
+    // Get unresolved alerts only
+    getUnresolved: protectedProcedure.query(async () => {
+      return getUnresolvedCrossValidationAlerts();
+    }),
+
+    // Get alert statistics
+    getStats: protectedProcedure.query(async () => {
+      const cvStats = await getCrossValidationStats();
+      const ocrStats = await getOcrStats();
+      return { crossValidation: cvStats, ocr: ocrStats };
+    }),
+
+    // Resolve an alert
+    resolve: protectedProcedure
+      .input(z.object({
+        alertId: z.number(),
+        note: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const resolvedBy = ctx.user?.name || ctx.user?.openId || 'unknown';
+        await resolveCrossValidationAlert(input.alertId, resolvedBy, input.note);
+        return { success: true };
+      }),
+
+    // Save OCR result and auto-check for cross-validation
+    saveOcrAndCheck: protectedProcedure
+      .input(z.object({
+        stationCode: z.string(),
+        province: z.string().default('ยโสธร'),
+        constituency: z.string().default('2'),
+        district: z.string().optional(),
+        documentType: z.enum(['ss5_11', 'ss5_18', 'unknown']),
+        scoringMethod: z.enum(['tally', 'numeric', 'mixed']).default('numeric'),
+        provider: z.string(),
+        totalVoters: z.number().optional(),
+        totalBallots: z.number().optional(),
+        spoiledBallots: z.number().default(0),
+        votes: z.array(z.object({
+          candidateNumber: z.number(),
+          candidateName: z.string(),
+          voteCount: z.number(),
+          confidence: z.number(),
+        })),
+        confidence: z.number().default(0),
+        imageUrl: z.string().optional(),
+        imageKey: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // 1. Save OCR result
+        const uploadedBy = ctx.user?.name || ctx.user?.openId || 'unknown';
+        const ocrResult = await saveOcrResult({
+          stationCode: input.stationCode,
+          province: input.province,
+          constituency: input.constituency,
+          district: input.district,
+          documentType: input.documentType,
+          scoringMethod: input.scoringMethod,
+          provider: input.provider,
+          totalVoters: input.totalVoters,
+          totalBallots: input.totalBallots,
+          spoiledBallots: input.spoiledBallots,
+          votesData: input.votes,
+          confidence: input.confidence,
+          imageUrl: input.imageUrl,
+          imageKey: input.imageKey,
+          uploadedBy,
+        });
+
+        // 2. Auto cross-validate: check if there's a matching result from the other document type
+        const existingResults = await getOcrResultsByStation(input.stationCode);
+        const otherType = input.documentType === 'ss5_11' ? 'ss5_18' : 'ss5_11';
+        const matchingResult = existingResults.find(r => r.documentType === otherType);
+
+        let crossValidationResult = null;
+        if (matchingResult) {
+          // Found matching document - run cross-validation
+          const { crossValidate } = await import('./hfOcr');
+          const matchingVotes = (matchingResult.votesData as any[]) || [];
+          
+          const tallyData = input.documentType === 'ss5_11' ? input : {
+            stationCode: matchingResult.stationCode || undefined,
+            totalVoters: matchingResult.totalVoters ?? undefined,
+            totalBallots: matchingResult.totalBallots ?? undefined,
+            spoiledBallots: matchingResult.spoiledBallots ?? undefined,
+            votes: matchingVotes,
+          };
+          const formData = input.documentType === 'ss5_18' ? input : {
+            stationCode: matchingResult.stationCode || undefined,
+            totalVoters: matchingResult.totalVoters ?? undefined,
+            totalBallots: matchingResult.totalBallots ?? undefined,
+            spoiledBallots: matchingResult.spoiledBallots ?? undefined,
+            votes: matchingVotes,
+          };
+
+          crossValidationResult = crossValidate(
+            { success: true, ...tallyData },
+            { success: true, ...formData },
+            2 // 2% tolerance
+          );
+
+          // Determine severity based on discrepancy
+          let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
+          if (!crossValidationResult.isMatch) {
+            const discCount = crossValidationResult.discrepancies?.length || 0;
+            if (discCount >= 5) severity = 'critical';
+            else if (discCount >= 3) severity = 'high';
+            else if (discCount >= 1) severity = 'medium';
+          }
+
+          // Save cross-validation alert
+          await saveCrossValidationAlert({
+            stationCode: input.stationCode,
+            province: input.province,
+            constituency: input.constituency,
+            district: input.district,
+            ss511ResultId: input.documentType === 'ss5_11' ? ocrResult.insertId : matchingResult.id,
+            ss518ResultId: input.documentType === 'ss5_18' ? ocrResult.insertId : matchingResult.id,
+            isMatch: crossValidationResult.isMatch,
+            overallConfidence: crossValidationResult.overallConfidence,
+            discrepancies: crossValidationResult.discrepancies,
+            candidateMatches: crossValidationResult.candidateMatches,
+            summary: crossValidationResult.summary,
+            severity: crossValidationResult.isMatch ? 'low' : severity,
+          });
+
+          // Notify owner if critical
+          if (severity === 'critical' || severity === 'high') {
+            try {
+              const { notifyOwner } = await import('./_core/notification');
+              await notifyOwner({
+                title: `⚠️ แจ้งเตือน: พบความผิดปกติ ${input.stationCode}`,
+                content: `Cross-validation พบคะแนนไม่ตรงกัน (${severity}) ที่หน่วย ${input.stationCode} จ.${input.province} เขต ${input.constituency}\n\n${crossValidationResult.summary}`,
+              });
+            } catch (e) {
+              console.warn('[Alert] Failed to notify owner:', e);
+            }
+          }
+        }
+
+        return {
+          ocrResultId: ocrResult.insertId,
+          crossValidation: crossValidationResult,
+          hasPairMatch: !!matchingResult,
+        };
+      }),
+
+    // Get OCR results for a station
+    getOcrResults: protectedProcedure
+      .input(z.object({
+        stationCode: z.string().optional(),
+        province: z.string().optional(),
+        constituency: z.string().optional(),
+        limit: z.number().default(50),
+      }))
+      .query(async ({ input }) => {
+        if (input.stationCode) {
+          return getOcrResultsByStation(input.stationCode);
+        }
+        if (input.province && input.constituency) {
+          return getOcrResultsByConstituency(input.province, input.constituency);
+        }
+        return getRecentOcrResults(input.limit);
+      }),
+  }),
+
+  // ============ REAL-TIME DASHBOARD (ยโสธร เขต 2) ============
+  realtimeDashboard: router({
+    // Get live counting status for Yasothon Zone 2
+    getLiveStatus: publicProcedure.query(async () => {
+      const ocrStats = await getOcrStats();
+      const cvStats = await getCrossValidationStats();
+      const recentResults = await getOcrResultsByConstituency('ยโสธร', '2');
+      
+      // Group by station
+      const stationMap = new Map<string, {
+        stationCode: string;
+        district: string;
+        ss511: any | null;
+        ss518: any | null;
+        crossValidated: boolean;
+        isMatch: boolean | null;
+      }>();
+
+      for (const r of recentResults) {
+        const code = r.stationCode || 'unknown';
+        if (!stationMap.has(code)) {
+          stationMap.set(code, {
+            stationCode: code,
+            district: r.district || '',
+            ss511: null,
+            ss518: null,
+            crossValidated: false,
+            isMatch: null,
+          });
+        }
+        const entry = stationMap.get(code)!;
+        if (r.documentType === 'ss5_11') entry.ss511 = r;
+        if (r.documentType === 'ss5_18') entry.ss518 = r;
+        if (entry.ss511 && entry.ss518) entry.crossValidated = true;
+      }
+
+      // Aggregate votes across all stations
+      const candidateVoteTotals = new Map<string, { name: string; number: number; totalVotes: number; stationCount: number }>();
+      for (const r of recentResults) {
+        // Prefer ss5_18 (official form) over ss5_11 for totals
+        if (r.documentType !== 'ss5_18' && recentResults.some(other => other.stationCode === r.stationCode && other.documentType === 'ss5_18')) {
+          continue;
+        }
+        const votes = (r.votesData as any[]) || [];
+        for (const v of votes) {
+          const key = `${v.candidateNumber}-${v.candidateName}`;
+          if (!candidateVoteTotals.has(key)) {
+            candidateVoteTotals.set(key, { name: v.candidateName, number: v.candidateNumber, totalVotes: 0, stationCount: 0 });
+          }
+          const entry = candidateVoteTotals.get(key)!;
+          entry.totalVotes += v.voteCount;
+          entry.stationCount += 1;
+        }
+      }
+
+      // Get alerts for this constituency
+      const alerts = await getCrossValidationAlerts({ province: 'ยโสธร', constituency: '2' });
+      const unresolvedAlerts = alerts.filter(a => !a.isResolved);
+
+      // Yasothon Zone 2 has ~350 polling stations across 5 districts
+      const totalExpectedStations = 350;
+      const stationsReported = stationMap.size;
+      const progressPercent = Math.min(100, Math.round((stationsReported / totalExpectedStations) * 100));
+
+      return {
+        province: 'ยโสธร',
+        constituency: '2',
+        districts: ['คำเขื่อนแก้ว', 'มหาชนะชัย', 'ค้อวัง', 'ป่าติ้ว', 'ไทยเจริญ'],
+        totalExpectedStations,
+        stationsReported,
+        progressPercent,
+        candidateVoteTotals: Array.from(candidateVoteTotals.values()).sort((a, b) => b.totalVotes - a.totalVotes),
+        stations: Array.from(stationMap.values()),
+        ocrStats,
+        crossValidationStats: cvStats,
+        unresolvedAlerts: unresolvedAlerts.length,
+        totalAlerts: alerts.length,
+        lastUpdated: new Date().toISOString(),
+      };
+    }),
+
+    // Get district breakdown for Yasothon Zone 2
+    getDistrictBreakdown: publicProcedure.query(async () => {
+      const results = await getOcrResultsByConstituency('ยโสธร', '2');
+      const districts = ['คำเขื่อนแก้ว', 'มหาชนะชัย', 'ค้อวัง', 'ป่าติ้ว', 'ไทยเจริญ'];
+      
+      return districts.map(district => {
+        const districtResults = results.filter(r => r.district === district);
+        const stationCodes = new Set(districtResults.map(r => r.stationCode));
+        const totalVotes = districtResults.reduce((sum, r) => {
+          const votes = (r.votesData as any[]) || [];
+          return sum + votes.reduce((s: number, v: any) => s + (v.voteCount || 0), 0);
+        }, 0);
+        return {
+          district,
+          stationsReported: stationCodes.size,
+          totalResults: districtResults.length,
+          totalVotes,
+          ss511Count: districtResults.filter(r => r.documentType === 'ss5_11').length,
+          ss518Count: districtResults.filter(r => r.documentType === 'ss5_18').length,
+        };
+      });
+    }),
+
+    // Get recent activity feed
+    getActivityFeed: publicProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ input }) => {
+        const results = await getRecentOcrResults(input.limit);
+        const alerts = await getCrossValidationAlerts(undefined, input.limit);
+        
+        const activities: { type: 'ocr' | 'alert'; timestamp: string; data: any }[] = [];
+        
+        for (const r of results) {
+          activities.push({
+            type: 'ocr',
+            timestamp: r.createdAt.toISOString(),
+            data: {
+              id: r.id,
+              stationCode: r.stationCode,
+              documentType: r.documentType,
+              provider: r.provider,
+              confidence: r.confidence,
+              district: r.district,
+            },
+          });
+        }
+        
+        for (const a of alerts) {
+          activities.push({
+            type: 'alert',
+            timestamp: a.createdAt.toISOString(),
+            data: {
+              id: a.id,
+              stationCode: a.stationCode,
+              isMatch: a.isMatch,
+              severity: a.severity,
+              summary: a.summary,
+              isResolved: a.isResolved,
+            },
+          });
+        }
+        
+        return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, input.limit);
+      }),
+  }),
+
   settings: settingsRouter,
+
+  // ============ YASOTHON DISTRICT 2 LIVE MONITORING ============
+  yasothon: router({
+    // Live monitoring data for Yasothon Zone 2
+    liveMonitor: publicProcedure.query(async () => {
+      // Get OCR results for Yasothon Zone 2
+      const results = await getOcrResultsByConstituency('ยโสธร', '2');
+      
+      // Aggregate vote counts by candidate
+      const candidateVotes: Record<number, number> = {};
+      const districtStatus: Record<string, { reported: number; totalVotes: number }> = {
+        'คำเขื่อนแก้ว': { reported: 0, totalVotes: 0 },
+        'มหาชนะชัย': { reported: 0, totalVotes: 0 },
+        'ค้อวัง': { reported: 0, totalVotes: 0 },
+        'ป่าติ้ว': { reported: 0, totalVotes: 0 },
+        'ไทยเจริญ': { reported: 0, totalVotes: 0 },
+      };
+      
+      let totalVotes = 0;
+      const reportedStations = new Set<string>();
+      
+      for (const result of results) {
+        const votes = result.votesData ? (typeof result.votesData === 'string' ? JSON.parse(result.votesData) : result.votesData) : [];
+        
+        if (votes && Array.isArray(votes) && votes.length > 0) {
+          if (result.stationCode) {
+            reportedStations.add(result.stationCode);
+          }
+          
+          if (result.district && districtStatus[result.district]) {
+            districtStatus[result.district].reported++;
+          }
+          
+          for (const vote of votes) {
+            const num = vote.candidateNumber || 0;
+            if (num > 0) {
+              candidateVotes[num] = (candidateVotes[num] || 0) + (vote.voteCount || 0);
+              totalVotes += vote.voteCount || 0;
+              
+              if (result.district && districtStatus[result.district]) {
+                districtStatus[result.district].totalVotes += vote.voteCount || 0;
+              }
+            }
+          }
+        }
+      }
+      
+      return {
+        totalVotes,
+        reportedStations: reportedStations.size,
+        candidateVotes,
+        districtStatus,
+        lastUpdated: new Date().toISOString(),
+      };
+    }),
+  }),
 });
 
 // ============ DEMO DATA GENERATORS ============

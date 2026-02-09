@@ -612,3 +612,22 @@
 - [x] โฟกัสเฉพาะยโสธร เขต 2 (ตามที่ผู้ใช้ต้องการ)
 - [x] อัพเดท BatchOcr.tsx เพิ่ม HF provider + Cross-validation UI
 - [x] เขียน Vitest tests (19 tests in hfOcr.test.ts, 143 total passed)
+
+## Phase 27: Alert System + Real-time Dashboard + OCR Accuracy
+- [x] Alert System: DB table สำหรับเก็บ alerts (cross_validation_alerts)
+- [x] Alert System: tRPC endpoint สร้าง/อ่าน/อัพเดท alerts (alertSystem.getUnresolved, resolve, getStats)
+- [x] Alert System: แจ้งเตือนอัตโนมัติเมื่อ Cross-validation พบคะแนนไม่ตรง > 5%
+- [x] Alert System: แจ้งเตือนผ่าน notifyOwner
+- [x] Alert System: UI แสดง alerts ใน Admin Dashboard (AlertCenter.tsx)
+- [x] Real-time Dashboard: หน้าแสดงผลนับคะแนนยโสธร เขต 2 แบบ real-time (YasothonDashboard.tsx)
+- [x] Real-time Dashboard: แสดงสถานะหน่วยเลือกตั้ง (รายอำเภอ)
+- [x] Real-time Dashboard: กราฟคะแนนผู้สมัคร 9 คน แบบ live update
+- [x] Real-time Dashboard: สรุปผลรวมคะแนนเขต 2 (5 อำเภอ)
+- [x] Real-time Dashboard: auto-refresh ทุก 15 วินาที
+- [x] OCR Accuracy: ปรับปรุง prompt ให้แม่นยำขึ้น
+- [x] OCR Accuracy: เพิ่ม validation rules (ผลรวมคะแนน = บัตรดี)
+- [x] OCR Accuracy: เพิ่ม confidence score per candidate
+- [x] OCR Accuracy: double-check logic + confidence scoring
+- [x] Vitest tests สำหรับ Cross-validation (18 tests)
+- [x] Vitest tests สำหรับ OCR validation (16 tests)
+- [x] ทดสอบระบบทั้งหมด (161 tests ผ่านทั้งหมด)

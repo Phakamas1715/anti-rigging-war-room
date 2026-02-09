@@ -212,6 +212,62 @@ export const volunteerCodes = mysqlTable("volunteer_codes", {
 export type VolunteerCode = typeof volunteerCodes.$inferSelect;
 export type InsertVolunteerCode = typeof volunteerCodes.$inferInsert;
 
+/**
+ * OCR Results table - stores OCR scan results from each polling station image
+ */
+export const ocrResults = mysqlTable('ocr_results', {
+  id: int('id').autoincrement().primaryKey(),
+  stationCode: varchar('station_code', { length: 64 }),
+  province: varchar('province', { length: 100 }),
+  constituency: varchar('constituency', { length: 10 }),
+  district: varchar('district', { length: 100 }),
+  documentType: mysqlEnum('document_type', ['ss5_11', 'ss5_18', 'unknown']).default('unknown'),
+  scoringMethod: mysqlEnum('scoring_method', ['tally', 'numeric', 'mixed']).default('numeric'),
+  provider: varchar('provider', { length: 32 }),
+  totalVoters: int('total_voters'),
+  totalBallots: int('total_ballots'),
+  spoiledBallots: int('spoiled_ballots').default(0),
+  votesData: json('votes_data'),
+  rawText: text('raw_text'),
+  confidence: int('confidence').default(0),
+  imageUrl: varchar('image_url', { length: 512 }),
+  imageKey: varchar('image_key', { length: 256 }),
+  uploadedBy: varchar('uploaded_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export type OcrResult = typeof ocrResults.$inferSelect;
+export type InsertOcrResult = typeof ocrResults.$inferInsert;
+
+/**
+ * Cross-validation alerts - stores discrepancies between ส.ส.5/11 and ส.ส.5/18
+ */
+export const crossValidationAlerts = mysqlTable('cross_validation_alerts', {
+  id: int('id').autoincrement().primaryKey(),
+  stationCode: varchar('station_code', { length: 64 }).notNull(),
+  province: varchar('province', { length: 100 }),
+  constituency: varchar('constituency', { length: 10 }),
+  district: varchar('district', { length: 100 }),
+  ss511ResultId: int('ss511_result_id'),
+  ss518ResultId: int('ss518_result_id'),
+  isMatch: boolean('is_match').default(false),
+  overallConfidence: int('overall_confidence').default(0),
+  discrepancies: json('discrepancies'),
+  candidateMatches: json('candidate_matches'),
+  summary: text('summary'),
+  severity: mysqlEnum('severity', ['low', 'medium', 'high', 'critical']).default('medium'),
+  isResolved: boolean('is_resolved').default(false),
+  resolvedBy: varchar('resolved_by', { length: 64 }),
+  resolvedAt: timestamp('resolved_at'),
+  resolvedNote: text('resolved_note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export type CrossValidationAlert = typeof crossValidationAlerts.$inferSelect;
+export type InsertCrossValidationAlert = typeof crossValidationAlerts.$inferInsert;
+
 // System Settings table for storing configuration
 export const systemSettings = mysqlTable('system_settings', {
   id: int('id').primaryKey().autoincrement(),
