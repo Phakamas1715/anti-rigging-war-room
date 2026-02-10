@@ -6,7 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Public Pages
-import Home from "./pages/Home";
+import Home from "./pages/Home-improved";
 import VolunteerLogin from "./pages/VolunteerLogin";
 import VolunteerRegister from "./pages/VolunteerRegister";
 import Help from "./pages/Help";
@@ -29,6 +29,7 @@ import OcrScanner from "./pages/OcrScanner";
 import BatchOcr from "./pages/BatchOcr";
 import VolunteerCodes from "./pages/VolunteerCodes";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
+import PollingStations from "./pages/PollingStations";
 
 // Volunteer Pages
 import VolunteerApp from "./pages/VolunteerApp";
@@ -53,6 +54,7 @@ function Router() {
       <Route path={"/admin/spatial"} component={SpatialMap} />
       <Route path={"/admin/volunteer-codes"} component={VolunteerCodes} />
       <Route path={"/admin/volunteers"} component={AdminVolunteers} />
+      <Route path={"/admin/stations"} component={PollingStations} />
       <Route path={"/admin/import"} component={AdminImport} />
       <Route path={"/admin/batch-ocr"} component={BatchOcr} />
       <Route path={"/admin/pvt"} component={PVTComparison} />

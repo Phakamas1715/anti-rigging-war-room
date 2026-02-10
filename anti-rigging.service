@@ -1,0 +1,19 @@
+[Unit]
+Description=Anti-Rigging War Room
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=appuser
+WorkingDirectory=/var/www/anti-rigging-war-room
+Environment="NODE_ENV=production"
+EnvironmentFile=/var/www/anti-rigging-war-room/.env
+ExecStart=/usr/bin/node /var/www/anti-rigging-war-room/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=anti-rigging
+
+[Install]
+WantedBy=multi-user.target

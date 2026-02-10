@@ -162,10 +162,12 @@ export type InsertVolunteer = typeof volunteers.$inferInsert;
 
 /**
  * Volunteer submissions table - for tracking PVT data submissions
+ * Supports both OAuth-based volunteers (volunteerId) and code-based volunteers (volunteerCode)
  */
 export const volunteerSubmissions = mysqlTable("volunteer_submissions", {
   id: int("id").autoincrement().primaryKey(),
-  volunteerId: int("volunteerId").notNull(),
+  volunteerId: int("volunteerId"), // nullable - for OAuth volunteers
+  volunteerCode: varchar("volunteerCode", { length: 6 }), // nullable - for code-based volunteers
   stationId: int("stationId").notNull(),
   photoUrl: varchar("photoUrl", { length: 512 }),
   photoKey: varchar("photoKey", { length: 256 }),

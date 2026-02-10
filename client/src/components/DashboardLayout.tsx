@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Key, BarChart3, Network, FileText, Upload, AlertTriangle, Map, Camera, ScanLine, Activity } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Key, BarChart3, Network, FileText, Upload, AlertTriangle, Map, Camera, ScanLine, Activity, Building2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -38,6 +38,7 @@ const menuItems = [
   { icon: ScanLine, label: "Batch OCR", path: "/batch-ocr" },
   { icon: Upload, label: "Evidence Upload", path: "/evidence" },
   { icon: AlertTriangle, label: "Alerts", path: "/alerts" },
+  { icon: Building2, label: "Polling Stations", path: "/admin/stations" },
   { icon: Users, label: "Volunteers", path: "/admin/volunteers" },
   { icon: Key, label: "Volunteer Codes", path: "/admin/volunteer-codes" },
 ];

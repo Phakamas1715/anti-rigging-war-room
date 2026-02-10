@@ -13,8 +13,14 @@ import {
   Camera,
   CheckCircle,
   Zap,
-  LogOut
+  LogOut,
+  Menu,
+  X,
+  TrendingUp,
+  FileSearch,
+  AlertCircle
 } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -69,15 +75,23 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="container py-16 md:py-24">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            ระบบตรวจจับการทุจริต
-            <span className="text-red-500"> การเลือกตั้ง</span>
+      <section className="container py-12 md:py-20">
+        <div className="text-center max-w-4xl mx-auto mb-12 md:mb-16 px-4">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-2 mb-6">
+            <Shield className="h-4 w-4 text-red-500" />
+            <span className="text-sm font-medium text-red-400">ระบบป้องกันการทุจริตการเลือกตั้ง</span>
+          </div>
+          
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+            ปกป้องเสียงของคุณ
+            <br />
+            <span className="text-red-500">ด้วยพลังข้อมูล</span>
           </h1>
-          <p className="text-lg text-slate-400">
-            ร่วมเป็นส่วนหนึ่งในการปกป้องประชาธิปไตย ด้วยระบบนับคะแนนคู่ขนาน (PVT) 
-            และเครื่องมือวิเคราะห์ทางสถิติระดับนิติวิทยาศาสตร์
+          <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            ระบบนับคะแนนคู่ขนาน (PVT) ผสานเครื่องมือวิเคราะห์นิติวิทยาศาสตร์ 
+            Klimek Model, Benford's Law และ Social Network Analysis 
+            เพื่อตรวจจับความผิดปกติแบบ Real-time
           </p>
         </div>
 

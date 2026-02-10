@@ -77,13 +77,14 @@ export default function VolunteerMobileApp() {
     }
   }, [setLocationPath]);
   
-  // Queries - use volunteer router for submissions
-  const submissionsQuery = trpc.volunteer.mySubmissions.useQuery(undefined, {
-    enabled: !!volunteerSession,
-  });
+  // Queries - use volunteerCode router for submissions
+  const submissionsQuery = trpc.volunteerCode.mySubmissions.useQuery(
+    { code: volunteerSession?.code || "" },
+    { enabled: !!volunteerSession?.code }
+  );
   
-  // Mutations - use volunteer router for submit
-  const submitMutation = trpc.volunteer.submit.useMutation();
+  // Mutations - use volunteerCode router for submit
+  const submitMutation = trpc.volunteerCode.submit.useMutation();
   
   // Get current location
   useEffect(() => {
@@ -160,6 +161,7 @@ export default function VolunteerMobileApp() {
     setIsSubmitting(true);
     try {
       const result = await submitMutation.mutateAsync({
+        code: volunteerSession.code,
         stationId: volunteerSession.stationId,
         totalVoters: parseInt(totalVoters),
         validVotes: parseInt(validVotes),

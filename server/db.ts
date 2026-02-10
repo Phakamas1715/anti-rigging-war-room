@@ -332,13 +332,15 @@ export async function createVolunteerSubmission(submission: InsertVolunteerSubmi
   // Create submission
   const result = await db.insert(volunteerSubmissions).values(submission);
   
-  // Update volunteer submission count
-  await db.update(volunteers)
-    .set({ 
-      submissionCount: sql`${volunteers.submissionCount} + 1`,
-      lastActiveAt: new Date()
-    })
-    .where(eq(volunteers.id, submission.volunteerId));
+  // Update volunteer submission count (only for OAuth volunteers)
+  if (submission.volunteerId) {
+    await db.update(volunteers)
+      .set({ 
+        submissionCount: sql`${volunteers.submissionCount} + 1`,
+        lastActiveAt: new Date()
+      })
+      .where(eq(volunteers.id, submission.volunteerId));
+  }
   
   return result;
 }
@@ -644,6 +646,9 @@ export async function updateVolunteerCode(code: string, data: {
   phone?: string;
   lineId?: string;
   stationId?: number;
+  isUsed?: boolean;
+  usedAt?: Date;
+  lastAccessAt?: Date;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

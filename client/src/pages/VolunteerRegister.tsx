@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Home, Copy, UserPlus } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Home, Copy, UserPlus, ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
 import { toast } from 'sonner';
 import {
@@ -84,6 +84,18 @@ export default function VolunteerRegister() {
   if (registrationSuccess && generatedCode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+        {/* Back Button - Top Left */}
+        <Link href="/">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="fixed top-4 left-4 text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            กลับหน้าหลัก
+          </Button>
+        </Link>
+
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
@@ -140,9 +152,17 @@ export default function VolunteerRegister() {
           </Card>
 
           {/* Back to Home */}
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
+            <Button
+              onClick={goToLogin}
+              variant="outline"
+              className="w-full h-12 border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              <ArrowRight className="w-4 h-4 mr-2" />
+              หรือเข้าสู่ระบบทันที
+            </Button>
             <Link href="/">
-              <Button variant="ghost" className="text-slate-400 hover:text-white">
+              <Button variant="ghost" className="w-full text-slate-400 hover:text-white hover:bg-slate-800">
                 <Home className="w-4 h-4 mr-2" />
                 กลับหน้าหลัก
               </Button>
@@ -156,6 +176,18 @@ export default function VolunteerRegister() {
   // Registration Form
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      {/* Back Button - Top Left */}
+      <Link href="/">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="fixed top-4 left-4 text-slate-400 hover:text-white hover:bg-slate-800"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          กลับหน้าหลัก
+        </Button>
+      </Link>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -305,9 +337,15 @@ export default function VolunteerRegister() {
         </div>
 
         {/* Back to Home */}
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-3">
+          <Link href="/volunteer/login">
+            <Button variant="outline" className="w-full h-12 border-slate-600 text-slate-300 hover:bg-slate-700">
+              <ArrowRight className="w-4 h-4 mr-2" />
+              มีรหัสแล้ว? เข้าสู่ระบบ
+            </Button>
+          </Link>
           <Link href="/">
-            <Button variant="ghost" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" className="w-full text-slate-400 hover:text-white hover:bg-slate-800">
               <Home className="w-4 h-4 mr-2" />
               กลับหน้าหลัก
             </Button>

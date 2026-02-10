@@ -1,4 +1,5 @@
 import { settingsRouter } from './settingsRouter';
+import { ocrRouter } from './routers/ocr.router';
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -19,7 +20,8 @@ import {
   createCrowdsourcedResult, getCrowdsourcedResults, getOfficialResults,
   createVolunteerCode, bulkCreateVolunteerCodes, loginWithVolunteerCode,
   getVolunteerCodeByCode, getVolunteerCodes, updateVolunteerCode,
-  deactivateVolunteerCode, getVolunteerCodeStats
+  deactivateVolunteerCode, getVolunteerCodeStats,
+  getDb
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
@@ -1290,6 +1292,92 @@ export const appRouter = router({
 
   // ============ OCR (DEEPSEEK VISION / HUGGING FACE) ============
   ocr: router({
+    // Cross-validate two images using Gemini OCR
+    crossValidate: publicProcedure
+      .input(z.object({
+        imageA: z.string(), // base64 or data URL
+        imageB: z.string(),
+        prefer: z.enum(["gemini","deepseek"]).optional()
+      }))
+      .mutation(async ({ input }) => {
+        const { analyzeWithGemini, validateOcrResult: validateGemini } = await import('./geminiOcr');
+        const { analyzeVoteCountingBoard, validateOcrResult: validateDeepseek, base64ToDataUrl } = await import('./deepseekOcr');
+        
+        // Try Gemini first (vision-capable LLM)
+        const a = await analyzeWithGemini(input.imageA).catch(err => ({ success: false, votes: [], error: String(err) }));
+        const b = await analyzeWithGemini(input.imageB).catch(err => ({ success: false, votes: [], error: String(err) }));
+
+        // If both failed and prefer deepseek or fallback, try deepseek (Hugging Face) if configured
+        if ((!a.success || !b.success) && input.prefer !== 'gemini') {
+          try {
+            // deepseek analyzeVoteCountingBoard expects an image URL; convert data URLs to data:<mime>;base64 form if needed
+            const aUrl = base64ToDataUrl(input.imageA);
+            const bUrl = base64ToDataUrl(input.imageB);
+
+            const da = await analyzeVoteCountingBoard(aUrl, process.env.DEEPSEEK_API_KEY || '');
+            const db = await analyzeVoteCountingBoard(bUrl, process.env.DEEPSEEK_API_KEY || '');
+            // prefer successful deepseek results when gemini failed
+            if (!a.success && da.success) Object.assign(a, da);
+            if (!b.success && db.success) Object.assign(b, db);
+          } catch (err) {
+            // ignore, keep gemini results
+          }
+        }
+
+        // Prepare result with validations
+        const aValidation = a.success ? validateGemini(a) : { isValid: false, warnings: [(a as any).error || 'Failed'] };
+        const bValidation = b.success ? validateGemini(b) : { isValid: false, warnings: [(b as any).error || 'Failed'] };
+
+        // Compare results (cast to any to avoid type errors with union types)
+        const aData = a as any;
+        const bData = b as any;
+        const stationCodeMatch = !!(aData.stationCode && bData.stationCode && aData.stationCode === bData.stationCode);
+        const totalBallotsDiff = Math.abs((aData.totalBallots||0) - (bData.totalBallots||0));
+        const totalVotersDiff = Math.abs((aData.totalVoters||0) - (bData.totalVoters||0));
+
+        const candidatesMap = new Map<number, { a?: any; b?: any }>();
+        (aData.votes || []).forEach((v: any) => candidatesMap.set(v.candidateNumber, { ...(candidatesMap.get(v.candidateNumber) || {}), a: v }));
+        (bData.votes || []).forEach((v: any) => candidatesMap.set(v.candidateNumber, { ...(candidatesMap.get(v.candidateNumber) || {}), b: v }));
+
+        const comparisons: Array<any> = [];
+        let matched = 0;
+        candidatesMap.forEach((entry, num) => {
+          const aVote = entry.a;
+          const bVote = entry.b;
+          if (aVote && bVote) {
+            const diff = Math.abs((aVote.voteCount||0) - (bVote.voteCount||0));
+            comparisons.push({ candidateNumber: num, a: aVote, b: bVote, diff });
+            if (diff === 0) matched++;
+          } else {
+            comparisons.push({ candidateNumber: num, a: aVote || null, b: bVote || null, diff: null });
+          }
+        });
+
+        const totalCandidates = candidatesMap.size || 1;
+        const candidateMatchRate = matched / totalCandidates;
+
+        const overallSimilarity = Math.max(0, 1 - (totalBallotsDiff / Math.max(1, (aData.totalBallots || bData.totalBallots || 1)))) * 0.5
+          + candidateMatchRate * 0.5;
+
+        const comparison = {
+          stationCodeMatch,
+          stationCodes: { a: aData.stationCode, b: bData.stationCode },
+          totalBallotsDiff,
+          totalVotersDiff,
+          comparisons,
+          candidateMatchRate,
+          overallSimilarity
+        };
+
+        return {
+          a,
+          b,
+          aValidation,
+          bValidation,
+          comparison
+        };
+      }),
+
     // Analyze vote counting board image using DeepSeek API
     analyze: protectedProcedure
       .input(z.object({
@@ -2014,6 +2102,120 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await deactivateVolunteerCode(input.code);
         return { success: true };
+      }),
+
+    // Public: Submit vote count with volunteer code
+    submit: publicProcedure
+      .input(z.object({
+        code: z.string().length(6),
+        stationId: z.number(),
+        photoBase64: z.string().optional(),
+        photoMimeType: z.string().optional(),
+        totalVoters: z.number(),
+        validVotes: z.number(),
+        invalidVotes: z.number(),
+        candidateAVotes: z.number(),
+        candidateBVotes: z.number(),
+        latitude: z.string().optional(),
+        longitude: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Verify volunteer code
+        const volunteerCode = await getVolunteerCodeByCode(input.code);
+        if (!volunteerCode || !volunteerCode.isActive) {
+          throw new Error("รหัสอาสาสมัครไม่ถูกต้องหรือไม่ active");
+        }
+
+        // Update last access time
+        await updateVolunteerCode(input.code, {
+          lastAccessAt: new Date(),
+          isUsed: true,
+          usedAt: volunteerCode.usedAt || new Date(),
+        });
+
+        let photoUrl = undefined;
+        let photoKey = undefined;
+
+        // Upload photo if provided
+        if (input.photoBase64 && input.photoMimeType) {
+          const buffer = Buffer.from(input.photoBase64, 'base64');
+          const ext = input.photoMimeType.split('/')[1] || 'jpg';
+          const fileKey = `submissions/${input.code}/${Date.now()}-${nanoid(8)}.${ext}`;
+
+          const uploadResult = await storagePut(fileKey, buffer, input.photoMimeType);
+          photoUrl = uploadResult.url;
+          photoKey = uploadResult.key;
+        }
+
+        // Create submission with volunteerCode
+        await createVolunteerSubmission({
+          volunteerCode: input.code,
+          stationId: input.stationId,
+          photoUrl,
+          photoKey,
+          totalVoters: input.totalVoters,
+          validVotes: input.validVotes,
+          invalidVotes: input.invalidVotes,
+          candidateAVotes: input.candidateAVotes,
+          candidateBVotes: input.candidateBVotes,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          notes: input.notes,
+        });
+
+        // Also create election data for PVT comparison
+        const stations = await getPollingStations();
+        const station = stations.find(s => s.id === input.stationId);
+
+        if (station) {
+          const turnout = input.totalVoters > 0 ? (input.validVotes + input.invalidVotes) / input.totalVoters : 0;
+          const candidateAShare = input.validVotes > 0 ? input.candidateAVotes / input.validVotes : 0;
+
+          await createElectionData({
+            stationId: input.stationId,
+            electionDate: new Date(),
+            totalVoters: input.totalVoters,
+            validVotes: input.validVotes,
+            invalidVotes: input.invalidVotes,
+            candidateAVotes: input.candidateAVotes,
+            candidateBVotes: input.candidateBVotes,
+            source: "pvt",
+            turnout: turnout.toString(),
+            candidateAShare: candidateAShare.toString(),
+          });
+        }
+
+        return { success: true, message: "ส่งข้อมูลสำเร็จ" };
+      }),
+
+    // Public: Get submissions by volunteer code
+    mySubmissions: publicProcedure
+      .input(z.object({
+        code: z.string().length(6),
+      }))
+      .query(async ({ input }) => {
+        // Verify volunteer code
+        const volunteerCode = await getVolunteerCodeByCode(input.code);
+        if (!volunteerCode || !volunteerCode.isActive) {
+          return [];
+        }
+
+        // Get submissions by volunteerCode
+        const db = await getDb();
+        if (!db) return [];
+
+        const { volunteerSubmissions } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
+
+        const submissions = await db
+          .select()
+          .from(volunteerSubmissions)
+          .where(eq(volunteerSubmissions.volunteerCode, input.code))
+          .orderBy(desc(volunteerSubmissions.createdAt))
+          .limit(100);
+
+        return submissions;
       }),
   }),
 

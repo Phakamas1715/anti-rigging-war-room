@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Home } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Home, ArrowLeft, UserPlus } from 'lucide-react';
 import { Link } from 'wouter';
 import { toast } from 'sonner';
 
@@ -64,6 +64,18 @@ export default function VolunteerLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      {/* Back Button - Top Left */}
+      <Link href="/">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="fixed top-4 left-4 text-slate-400 hover:text-white hover:bg-slate-800"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          กลับหน้าหลัก
+        </Button>
+      </Link>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -129,11 +141,17 @@ export default function VolunteerLogin() {
               </Button>
             </form>
 
-            {/* Help Text */}
+            {/* Register Link */}
             <div className="mt-6 pt-6 border-t border-slate-700">
-              <p className="text-sm text-slate-400 text-center">
-                ยังไม่มีรหัส? ติดต่อผู้ดูแลระบบเพื่อขอรหัสอาสาสมัคร
+              <p className="text-sm text-slate-400 text-center mb-3">
+                ยังไม่มีรหัส?
               </p>
+              <Link href="/volunteer/register">
+                <Button variant="outline" className="w-full h-12 border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  ลงทะเบียนรับรหัสใหม่
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -157,7 +175,7 @@ export default function VolunteerLogin() {
         {/* Back to Home */}
         <div className="mt-6 text-center">
           <Link href="/">
-            <Button variant="ghost" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" className="w-full text-slate-400 hover:text-white hover:bg-slate-800">
               <Home className="w-4 h-4 mr-2" />
               กลับหน้าหลัก
             </Button>
