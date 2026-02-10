@@ -10,8 +10,10 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
-    ,"db:check": "NODE_ENV=development tsx scripts/check-db.ts"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "db:check": "NODE_ENV=development tsx scripts/check-db.ts",
+    "vercel-build": "vite build",
+    "postinstall": "pnpm build || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.713.0",
