@@ -1,6 +1,11 @@
 /**
  * Gemini Vision OCR Module for Vote Counting Board Analysis
  * Uses the built-in Gemini API via invokeLLM helper
+ * 
+ * Supports Thai election document types:
+ * - ส.ส.5/11: กระดานนับคะแนนแบบขีด (Tally board at polling station)
+ * - ส.ส.5/18: แบบรายงานผลการนับคะแนน (Official result report form)
+ * - Auto: ตรวจจับอัตโนมัติ
  */
 
 import { invokeLLM } from './_core/llm';
@@ -10,6 +15,7 @@ interface VoteCount {
   candidateNumber: number;
   voteCount: number;
   confidence: number;
+  tallyBreakdown?: string;
 }
 
 interface OcrResult {
@@ -22,13 +28,183 @@ interface OcrResult {
   rawText?: string;
   error?: string;
   processingTime?: number;
+  scoringMethod?: 'numeric' | 'tally' | 'mixed';
+  documentType?: 'ss5_11' | 'ss5_18' | 'unknown';
 }
+
+// ============================================================
+// PROMPT: ส.ส.5/11 - กระดานนับคะแนนแบบขีด (Tally Board)
+// ============================================================
+const SS5_11_TALLY_PROMPT = `คุณคือผู้เชี่ยวชาญด้านการอ่านกระดานนับคะแนนเลือกตั้ง สส. ของประเทศไทย
+เอกสารนี้คือ "แบบ ส.ส.5/11" หรือ "ส.ส.5/11 (บช)" - กระดานนับคะแนนที่ตั้งหน้าหน่วยเลือกตั้ง
+
+ลักษณะของ ส.ส.5/11:
+- เป็นกระดานขนาดใหญ่ (กระดาษแผ่นใหญ่) ตั้งแสดงหน้าหน่วยเลือกตั้ง
+- ด้านบนมีข้อมูล: จังหวัด, เขตเลือกตั้ง, อำเภอ/ตำบล, หน่วยเลือกตั้งที่
+- มีตารางแบ่งเป็นแถว แต่ละแถวคือผู้สมัคร 1 คน
+- ด้านซ้ายมีหมายเลขผู้สมัคร (1, 2, 3, ...) และชื่อพรรค/ผู้สมัคร
+- คะแนนแสดงเป็น "ขีดคะแนน" (Tally marks):
+  * ขีดแนวตั้ง 4 ขีด แล้วขีดทับเฉียง 1 ขีด = 1 ชุด = 5 คะแนน
+  * เขียนเป็น ||||/ หรือ 正 
+  * ขีดที่ไม่ครบชุด (1-4 ขีด) นับตามจำนวนจริง
+  * ตัวอย่าง: ||||/ ||||/ ||||/ ||| = 3 ชุด + 3 ขีด = 15+3 = 18 คะแนน
+
+วิธีนับขีดคะแนนอย่างถูกต้อง:
+1. ดูแต่ละแถว (ผู้สมัครแต่ละคน) ทีละแถว
+2. นับจำนวน "ชุดที่ครบ 5" (มีขีดทับเฉียง) → คูณ 5
+3. นับขีดที่เหลือ (ไม่ครบชุด) → บวกเพิ่ม
+4. รวมเป็นคะแนนทั้งหมดของผู้สมัครคนนั้น
+5. ทำซ้ำทุกแถว
+
+สำคัญมาก:
+- นับขีดคะแนนอย่างละเอียดทีละชุด อย่ารีบนับ
+- ถ้าขีดไม่ชัดหรือภาพเบลอ ให้ใส่ confidence ต่ำ (< 70)
+- ระบุ tallyBreakdown เช่น "5+5+5+3 = 18" สำหรับทุกผู้สมัคร
+- ด้านล่างกระดานอาจมีข้อมูลสรุป: จำนวนผู้มีสิทธิ์, บัตรที่ใช้, บัตรเสีย
+
+ตอบกลับในรูปแบบ JSON เท่านั้น:
+{
+  "documentType": "ss5_11",
+  "stationCode": "รหัสหน่วย เช่น หน่วยที่ 5 อำเภอคำเขื่อนแก้ว",
+  "province": "จังหวัด (ถ้าอ่านได้)",
+  "constituency": "เขตเลือกตั้งที่ (ถ้าอ่านได้)",
+  "district": "อำเภอ/ตำบล (ถ้าอ่านได้)",
+  "totalVoters": จำนวนผู้มีสิทธิ์ หรือ null,
+  "totalBallots": จำนวนบัตรที่ใช้ หรือ null,
+  "spoiledBallots": จำนวนบัตรเสีย หรือ 0,
+  "scoringMethod": "tally",
+  "votes": [
+    {
+      "candidateNumber": หมายเลขผู้สมัคร,
+      "candidateName": "ชื่อผู้สมัคร/พรรค (ถ้าอ่านได้)",
+      "voteCount": จำนวนคะแนนที่นับได้,
+      "tallyBreakdown": "เช่น 5+5+5+3 = 18",
+      "confidence": ความมั่นใจ 0-100
+    }
+  ],
+  "rawText": "รายละเอียดทั้งหมดที่อ่านได้จากภาพ"
+}`;
+
+// ============================================================
+// PROMPT: ส.ส.5/18 - แบบรายงานผลการนับคะแนน (Official Form)
+// ============================================================
+const SS5_18_FORM_PROMPT = `คุณคือผู้เชี่ยวชาญด้านการอ่านเอกสารผลการเลือกตั้ง สส. ของประเทศไทย
+เอกสารนี้คือ "แบบ ส.ส.5/18" หรือ "ส.ส.5/18 (บช)" - แบบรายงานผลการนับคะแนนอย่างเป็นทางการ
+
+ลักษณะของ ส.ส.5/18:
+- เป็นเอกสารทางการ มีตราครุฑด้านบน
+- มีหัวข้อ "รายงานผลการนับคะแนนเลือกตั้ง" หรือคล้ายกัน
+- ส่วนบนมีข้อมูล: จังหวัด, เขตเลือกตั้ง, อำเภอ/ตำบล, หน่วยเลือกตั้ง, วันที่
+- มีข้อมูลสรุป:
+  * จำนวนผู้มีสิทธิเลือกตั้ง
+  * จำนวนผู้มาใช้สิทธิ
+  * จำนวนบัตรเลือกตั้งที่ได้รับมา
+  * จำนวนบัตรที่ใช้ลงคะแนน
+  * จำนวนบัตรเสีย
+  * จำนวนบัตรไม่ประสงค์ลงคะแนน
+- มีตาราง: หมายเลขผู้สมัคร | ชื่อผู้สมัคร (ชื่อ-สกุล) | คะแนนที่ได้ (ตัวเลข)
+- คะแนนเขียนเป็นตัวเลขอารบิก (ไม่ใช่ขีดคะแนน)
+- อาจมีลายเซ็นกรรมการประจำหน่วย
+
+วิธีอ่าน:
+1. อ่านข้อมูลหัวเอกสาร (จังหวัด, เขต, หน่วย)
+2. อ่านข้อมูลสรุป (ผู้มีสิทธิ์, บัตรที่ใช้, บัตรเสีย)
+3. อ่านตารางคะแนน (หมายเลข, ชื่อ, คะแนน)
+4. ตรวจสอบว่าคะแนนรวมตรงกับจำนวนบัตร
+
+สำคัญมาก:
+- อ่านตัวเลขอย่างระมัดระวัง (0 กับ 6, 1 กับ 7 อาจคล้ายกัน)
+- ถ้าลายมืออ่านไม่ชัด ให้ใส่ confidence ต่ำ
+- อ่านชื่อ-สกุลผู้สมัครให้ครบถ้วน
+
+ตอบกลับในรูปแบบ JSON เท่านั้น:
+{
+  "documentType": "ss5_18",
+  "stationCode": "รหัสหน่วย/หมายเลขหน่วย",
+  "province": "จังหวัด (ถ้าอ่านได้)",
+  "constituency": "เขตเลือกตั้งที่ (ถ้าอ่านได้)",
+  "district": "อำเภอ/ตำบล (ถ้าอ่านได้)",
+  "totalVoters": จำนวนผู้มีสิทธิ์,
+  "totalBallots": จำนวนบัตรที่ใช้,
+  "spoiledBallots": จำนวนบัตรเสีย,
+  "noVoteBallots": จำนวนบัตรไม่ประสงค์ลงคะแนน หรือ 0,
+  "scoringMethod": "numeric",
+  "votes": [
+    {
+      "candidateNumber": หมายเลขผู้สมัคร,
+      "candidateName": "ชื่อ-สกุล ผู้สมัคร",
+      "voteCount": จำนวนคะแนน,
+      "confidence": ความมั่นใจ 0-100
+    }
+  ],
+  "rawText": "ข้อความทั้งหมดที่อ่านได้จากเอกสาร"
+}`;
+
+// ============================================================
+// PROMPT: Auto-detect (ตรวจจับอัตโนมัติ)
+// ============================================================
+const AUTO_DETECT_PROMPT = `คุณคือผู้เชี่ยวชาญด้านการอ่านเอกสารผลการเลือกตั้ง สส. ของประเทศไทย
+
+ก่อนอื่น ให้ตรวจสอบว่าภาพนี้เป็นเอกสารประเภทใด:
+
+A) "ส.ส.5/11" - กระดานนับคะแนน (Tally Board)
+   - กระดานขนาดใหญ่ตั้งหน้าหน่วยเลือกตั้ง
+   - คะแนนเป็นขีด (tally marks): ||||/ = 5 คะแนน
+   - มีหมายเลขผู้สมัครและชื่อพรรคด้านซ้าย
+
+B) "ส.ส.5/18" - แบบรายงานผลการนับคะแนน
+   - เอกสารทางการ มีตราครุฑ
+   - คะแนนเป็นตัวเลขอารบิกในตาราง
+   - มีข้อมูลสรุปครบถ้วน (ผู้มีสิทธิ์, บัตรที่ใช้, บัตรเสีย)
+
+C) เอกสารอื่น / ไม่แน่ใจ
+
+ถ้าเป็น ส.ส.5/11 (ขีดคะแนน):
+- นับจำนวนชุดที่ครบ 5 (มีขีดทับ) × 5
+- บวกขีดที่เหลือ (ไม่ครบชุด)
+- ระบุ tallyBreakdown เช่น "5+5+5+3 = 18"
+
+ถ้าเป็น ส.ส.5/18 (ตาราง):
+- อ่านตัวเลขจากตาราง
+- อ่านชื่อ-สกุลผู้สมัคร
+- อ่านข้อมูลสรุป (ผู้มีสิทธิ์, บัตรที่ใช้, บัตรเสีย)
+
+ตอบกลับในรูปแบบ JSON เท่านั้น:
+{
+  "documentType": "ss5_11" หรือ "ss5_18" หรือ "unknown",
+  "stationCode": "รหัสหน่วย หรือ null",
+  "province": "จังหวัด หรือ null",
+  "constituency": "เขตเลือกตั้งที่ หรือ null",
+  "district": "อำเภอ/ตำบล หรือ null",
+  "totalVoters": จำนวนผู้มีสิทธิ์ หรือ null,
+  "totalBallots": จำนวนบัตรที่ใช้ หรือ null,
+  "spoiledBallots": จำนวนบัตรเสีย หรือ 0,
+  "noVoteBallots": จำนวนบัตรไม่ประสงค์ลงคะแนน หรือ 0,
+  "scoringMethod": "tally" หรือ "numeric" หรือ "mixed",
+  "votes": [
+    {
+      "candidateNumber": หมายเลขผู้สมัคร,
+      "candidateName": "ชื่อผู้สมัคร/พรรค",
+      "voteCount": จำนวนคะแนน,
+      "tallyBreakdown": "วิธีนับ เช่น 5+5+3 = 13 (เฉพาะขีดคะแนน)",
+      "confidence": ความมั่นใจ 0-100
+    }
+  ],
+  "rawText": "รายละเอียดที่อ่านได้จากภาพ"
+}
+
+หากอ่านตัวเลขหรือขีดไม่ชัด ให้ใส่ค่า confidence ต่ำ (< 70)`;
+
+export type OcrMode = 'auto' | 'tally' | 'numeric' | 'ss5_11' | 'ss5_18';
 
 /**
  * Analyze vote counting board image using Gemini Vision API
+ * @param imageBase64 - Base64 encoded image
+ * @param mode - OCR mode: 'auto', 'tally'/'ss5_11' (tally marks), 'numeric'/'ss5_18' (form)
  */
 export async function analyzeWithGemini(
-  imageBase64: string
+  imageBase64: string,
+  mode: OcrMode = 'auto'
 ): Promise<OcrResult> {
   const startTime = Date.now();
 
@@ -44,34 +220,27 @@ export async function analyzeWithGemini(
       mimeType = 'image/webp';
     }
 
-    const systemPrompt = `คุณคือผู้เชี่ยวชาญด้านการอ่านกระดานนับคะแนนเลือกตั้งของประเทศไทย
-
-งานของคุณคือวิเคราะห์รูปภาพกระดานนับคะแนนและดึงข้อมูลต่อไปนี้:
-1. รหัสหน่วยเลือกตั้ง (ถ้ามี)
-2. จำนวนผู้มีสิทธิเลือกตั้ง
-3. จำนวนบัตรเลือกตั้งที่ใช้
-4. จำนวนบัตรเสีย
-5. คะแนนของผู้สมัครแต่ละคน พร้อมหมายเลขและชื่อ
-
-ตอบกลับในรูปแบบ JSON เท่านั้น ดังนี้:
-{
-  "stationCode": "รหัสหน่วย หรือ null",
-  "totalVoters": จำนวนผู้มีสิทธิ์,
-  "totalBallots": จำนวนบัตรที่ใช้,
-  "spoiledBallots": จำนวนบัตรเสีย,
-  "votes": [
-    {
-      "candidateNumber": หมายเลขผู้สมัคร,
-      "candidateName": "ชื่อผู้สมัคร/พรรค",
-      "voteCount": จำนวนคะแนน,
-      "confidence": ความมั่นใจ 0-100
+    // Select prompt based on mode
+    let systemPrompt: string;
+    let userMessage: string;
+    
+    switch (mode) {
+      case 'tally':
+      case 'ss5_11':
+        systemPrompt = SS5_11_TALLY_PROMPT;
+        userMessage = 'กรุณาวิเคราะห์รูปภาพกระดานนับคะแนน ส.ส.5/11 นี้ โดยนับจากขีดคะแนน (tally marks) อย่างละเอียดทีละชุด ตอบเป็น JSON เท่านั้น';
+        break;
+      case 'numeric':
+      case 'ss5_18':
+        systemPrompt = SS5_18_FORM_PROMPT;
+        userMessage = 'กรุณาวิเคราะห์แบบรายงานผลการนับคะแนน ส.ส.5/18 นี้ อ่านตัวเลขจากตารางอย่างระมัดระวัง ตอบเป็น JSON เท่านั้น';
+        break;
+      case 'auto':
+      default:
+        systemPrompt = AUTO_DETECT_PROMPT;
+        userMessage = 'กรุณาวิเคราะห์เอกสารผลการเลือกตั้งนี้ ตรวจสอบว่าเป็น ส.ส.5/11 (ขีดคะแนน) หรือ ส.ส.5/18 (ตาราง) แล้วดึงข้อมูลคะแนน ตอบเป็น JSON เท่านั้น';
+        break;
     }
-  ],
-  "rawText": "ข้อความดิบที่อ่านได้จากภาพ"
-}
-
-หากอ่านตัวเลขไม่ชัด ให้ใส่ค่า confidence ต่ำ (< 70)
-หากไม่พบข้อมูลใด ให้ใส่ค่า null หรือ 0`;
 
     const response = await invokeLLM({
       messages: [
@@ -84,7 +253,7 @@ export async function analyzeWithGemini(
           content: [
             {
               type: 'text',
-              text: 'กรุณาวิเคราะห์รูปภาพกระดานนับคะแนนนี้และดึงข้อมูลคะแนนเลือกตั้ง ตอบเป็น JSON เท่านั้น'
+              text: userMessage
             },
             {
               type: 'image_url',
@@ -125,17 +294,30 @@ export async function analyzeWithGemini(
 
     const parsed = JSON.parse(jsonContent);
     
+    // Map scoring method
+    const scoringMethod = parsed.scoringMethod || 
+      (mode === 'tally' || mode === 'ss5_11' ? 'tally' : 
+       mode === 'numeric' || mode === 'ss5_18' ? 'numeric' : 'mixed');
+
+    // Map document type
+    const documentType = parsed.documentType || 
+      (mode === 'tally' || mode === 'ss5_11' ? 'ss5_11' : 
+       mode === 'numeric' || mode === 'ss5_18' ? 'ss5_18' : 'unknown');
+
     return {
       success: true,
       stationCode: parsed.stationCode || undefined,
       totalVoters: parsed.totalVoters || 0,
       totalBallots: parsed.totalBallots || 0,
       spoiledBallots: parsed.spoiledBallots || 0,
+      scoringMethod,
+      documentType,
       votes: (parsed.votes || []).map((v: any) => ({
         candidateName: v.candidateName || 'Unknown',
         candidateNumber: v.candidateNumber || 0,
         voteCount: v.voteCount || 0,
-        confidence: v.confidence || 50
+        confidence: v.confidence || 50,
+        tallyBreakdown: v.tallyBreakdown || undefined
       })),
       rawText: parsed.rawText,
       processingTime: Date.now() - startTime
@@ -154,7 +336,7 @@ export async function analyzeWithGemini(
 }
 
 /**
- * Validate OCR results for consistency (same as deepseekOcr)
+ * Validate OCR results for consistency
  */
 export function validateOcrResult(result: OcrResult): {
   isValid: boolean;
@@ -193,8 +375,95 @@ export function validateOcrResult(result: OcrResult): {
     }
   }
 
+  // Tally-specific validation (ส.ส.5/11)
+  if (result.scoringMethod === 'tally' || result.documentType === 'ss5_11') {
+    const roundVotes = result.votes.filter(v => v.voteCount > 0 && v.voteCount % 10 === 0);
+    if (roundVotes.length > result.votes.length / 2) {
+      warnings.push('พบคะแนนเป็นจำนวนกลมหลายรายการ อาจนับขีดคะแนนไม่ถูกต้อง');
+    }
+    // Validate tally breakdown matches voteCount
+    for (const v of result.votes) {
+      if (v.tallyBreakdown) {
+        const match = v.tallyBreakdown.match(/=\s*(\d+)/);
+        if (match) {
+          const breakdownTotal = parseInt(match[1]);
+          if (breakdownTotal !== v.voteCount) {
+            warnings.push(`ผู้สมัครหมายเลข ${v.candidateNumber}: tally breakdown (${breakdownTotal}) ไม่ตรงกับคะแนน (${v.voteCount})`);
+          }
+        }
+      }
+    }
+  }
+
+  // Check for duplicate candidate numbers
+  const candidateNums = result.votes.map(v => v.candidateNumber).filter(n => n > 0);
+  const uniqueNums = new Set(candidateNums);
+  if (uniqueNums.size < candidateNums.length) {
+    warnings.push('พบหมายเลขผู้สมัครซ้ำ กรุณาตรวจสอบ');
+  }
+
+  // Check for zero votes on all candidates (likely OCR failure)
+  const allZero = result.votes.every(v => v.voteCount === 0);
+  if (allZero && result.votes.length > 0) {
+    warnings.push('ผู้สมัครทุกคนได้ 0 คะแนน อาจเป็นข้อผิดพลาดจาก OCR');
+  }
+
   return {
     isValid: warnings.length === 0,
     warnings
+  };
+}
+
+/**
+ * Double-check OCR result by running analysis twice and comparing
+ * Returns the result with higher overall confidence
+ */
+export async function doubleCheckOcr(
+  imageBase64: string,
+  mode: OcrMode = 'auto'
+): Promise<{ result: OcrResult; isConsistent: boolean; discrepancies: string[] }> {
+  const [result1, result2] = await Promise.all([
+    analyzeWithGemini(imageBase64, mode),
+    analyzeWithGemini(imageBase64, mode)
+  ]);
+
+  const discrepancies: string[] = [];
+
+  if (!result1.success || !result2.success) {
+    return {
+      result: result1.success ? result1 : result2,
+      isConsistent: false,
+      discrepancies: ['OCR ล้มเหลวในการวิเคราะห์รอบใดรอบหนึ่ง']
+    };
+  }
+
+  // Compare vote counts for each candidate
+  const maxLen = Math.max(result1.votes.length, result2.votes.length);
+  for (let i = 0; i < maxLen; i++) {
+    const v1 = result1.votes[i];
+    const v2 = result2.votes[i];
+    if (!v1 || !v2) {
+      discrepancies.push(`จำนวนผู้สมัครไม่ตรงกัน: รอบ 1 = ${result1.votes.length}, รอบ 2 = ${result2.votes.length}`);
+      break;
+    }
+    if (v1.voteCount !== v2.voteCount) {
+      const diff = Math.abs(v1.voteCount - v2.voteCount);
+      const maxVote = Math.max(v1.voteCount, v2.voteCount, 1);
+      const pctDiff = (diff / maxVote) * 100;
+      discrepancies.push(
+        `ผู้สมัคร #${v1.candidateNumber}: รอบ 1 = ${v1.voteCount}, รอบ 2 = ${v2.voteCount} (ต่าง ${pctDiff.toFixed(1)}%)`
+      );
+    }
+  }
+
+  // Pick the result with higher average confidence
+  const avgConf1 = result1.votes.reduce((s, v) => s + v.confidence, 0) / (result1.votes.length || 1);
+  const avgConf2 = result2.votes.reduce((s, v) => s + v.confidence, 0) / (result2.votes.length || 1);
+  const bestResult = avgConf1 >= avgConf2 ? result1 : result2;
+
+  return {
+    result: bestResult,
+    isConsistent: discrepancies.length === 0,
+    discrepancies
   };
 }

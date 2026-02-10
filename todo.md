@@ -407,3 +407,227 @@
 - [x] ระบบสร้างรหัส 6 หลักอัตโนมัติเมื่อลงทะเบียน
 - [x] แสดงรหัสให้อาสาสมัครหลังลงทะเบียนสำเร็จ
 - [x] อัปเดต Navigation และ Routes
+
+
+## New Features - Phase 16: Demo Dashboard with Mock Data
+
+### Mock Data Generation
+- [x] สร้างข้อมูลจำลองหน่วยเลือกตั้ง 50 หน่วย
+- [x] สร้างข้อมูลจำลองผลคะแนน
+- [x] สร้างข้อมูลจำลองการแจ้งเตือน
+- [x] สร้างข้อมูลจำลอง PVT Comparison
+
+### Demo Mode Toggle
+- [x] เพิ่มปุ่ม Demo Mode ใน Dashboard
+- [x] สลับระหว่างข้อมูลจริงและข้อมูลจำลอง
+- [x] แสดง Banner บอกว่าอยู่ใน Demo Mode
+
+### Dashboard Visualizations
+- [x] กราฟแท่งแสดงคะแนนผู้สมัคร
+- [x] กราฟวงกลมแสดงสัดส่วนคะแนน
+- [x] แสดงความครอบคลุมรายจังหวัด
+- [x] แสดงสรุป Klimek และ Benford Analysis
+
+
+## New Features - Phase 17: Enhanced Demo Dashboard
+
+### Chart Animations
+- [x] เพิ่ม Animation สำหรับกราฟแท่ง (Bar Chart)
+- [x] เพิ่ม Animation สำหรับกราฟวงกลม (Pie Chart)
+- [x] เพิ่ม Count-up Animation สำหรับตัวเลข
+- [x] เพิ่ม Fade-in Animation สำหรับ Cards
+
+### Scenario Selection
+- [x] เพิ่มตัวเลือกสถานการณ์: การเลือกตั้งปกติ
+- [x] เพิ่มตัวเลือกสถานการณ์: มีการโกง 5%
+- [x] เพิ่มตัวเลือกสถานการณ์: มีการโกงรุนแรง
+
+### Export PDF
+- [x] เพิ่มปุ่ม Export Demo Report เป็น PDF
+
+### Demo Pages for Public
+- [x] สร้างหน้า Demo สำหรับผู้ใช้ทั่วไป (ไม่ต้อง login)
+- [x] แสดงตัวอย่างการทำงานแต่ละฟีเจอร์
+
+
+## New Features - Phase 18: System Documentation
+
+### Documentation
+- [x] สร้างเอกสารอธิบายระบบตรวจจับการโกง
+- [x] อธิบาย Klimek Model
+- [x] อธิบาย Benford's Law
+- [x] อธิบาย Network Analysis (SNA)
+- [x] อธิบาย PVT Comparison
+- [x] อธิบาย Spatial Analysis
+
+### Website Integration
+- [x] เพิ่มหน้า "วิธีการทำงาน" ในเว็บไซต์
+- [x] เพิ่มลิงก์ในหน้าหลัก
+
+
+## New Features - Phase 19: Interactive Tutorial
+
+### Tour Component
+- [ ] สร้าง TourProvider และ useTour hook
+- [ ] สร้าง TourStep component สำหรับแสดง tooltip
+- [ ] สร้าง TourOverlay สำหรับ highlight element
+- [ ] เพิ่ม Animation และ Transition
+
+### Home Page Tutorial
+- [ ] Tutorial แนะนำหน้าหลัก
+- [ ] อธิบายปุ่มสำหรับอาสาสมัคร
+- [ ] อธิบายปุ่มสำหรับ Admin
+
+### Admin Dashboard Tutorial
+- [ ] Tutorial แนะนำ Sidebar navigation
+- [ ] อธิบายเครื่องมือวิเคราะห์แต่ละตัว
+- [ ] อธิบาย Quick Actions
+
+### Volunteer Tutorial
+- [ ] Tutorial แนะนำหน้าลงทะเบียน
+- [ ] Tutorial แนะนำหน้า Mobile App
+- [ ] อธิบาย Bottom Tabs และ Swipe
+
+
+## New Features - Phase 20: Admin Code Login
+
+### Admin Access by Code
+- [x] สร้างหน้า Admin Login ด้วยรหัส 464646
+- [x] เพิ่ม route สำหรับ Admin Code Login
+- [x] เพิ่มลิงก์ในหน้าหลัก
+- [x] อัปเดต AdminLayout ให้ตรวจสอบ adminSession
+
+
+## UI/UX Modernization - Orange Theme
+
+### Color Theme Update
+- [x] Update primary color from red to orange (#F97316)
+- [x] Update accent colors to complement orange theme
+- [x] Update gradient backgrounds with orange tones
+- [x] Update button styles with modern orange theme
+
+### Modern UI Elements
+- [x] Add modern glassmorphism effects
+- [x] Update card styles with subtle shadows
+- [x] Improve typography and spacing
+- [x] Add smooth micro-interactions
+
+
+## New Features - Phase 21: GLUE-FIN Integration
+
+### GLUE-FIN Module
+- [x] Design GLUE-FIN formula and documentation
+- [x] Create glueFin.ts module with calculateGlueFin function
+- [x] Create glueFin.test.ts with 17 test cases
+- [x] All 95 tests passing (including GLUE-FIN)
+- [ ] Integrate GLUE-FIN into Dashboard UI
+- [ ] Add GLUE-FIN score to polling station reports
+
+
+### GLUE-FIN Heatmap
+- [x] Create Thailand map SVG component
+- [x] Add province-level GLUE-FIN score coloring
+- [x] Add interactive tooltips with province details
+- [x] Create GlueFinHeatmap page in Admin Dashboard
+- [x] Add legend for risk levels
+
+
+## Bug Fix
+- [x] Fix API Query Error "The string did not match the expected pattern" on Home page (transient, not reproducible)
+
+## Phase 22: Help Update & GLUE-FIN API Integration
+- [ ] Update Help.tsx with GLUE-FIN documentation
+- [ ] Update Help.tsx with Klimek Model documentation
+- [ ] Update Help.tsx with Benford's Law documentation
+- [ ] Update Help.tsx with Admin tools guide
+- [ ] Create GLUE-FIN tRPC API endpoint in routers.ts
+- [ ] Create GLUE-FIN database schema in drizzle/schema.ts
+- [ ] Add GLUE-FIN db helpers in server/db.ts
+- [ ] Update GlueFinHeatmap.tsx to use real API data
+- [ ] Run database migration (pnpm db:push)
+- [ ] Test all endpoints and UI
+
+## Phase 22: Help Update & GLUE-FIN API Integration
+- [x] Update Help.tsx with GLUE-FIN documentation
+- [x] Add Klimek Model explanation to Help
+- [x] Add Benford's Law explanation to Help
+- [x] Add Admin tools guide to Help
+- [x] Create tRPC API endpoint for GLUE-FIN
+- [x] Connect GlueFinHeatmap to real API data
+- [x] Add data source indicator (real/demo)
+- [x] Add auto-refresh every 30 seconds
+
+## Phase 23: GLUE-FIN Drill-down ระดับอำเภอ
+- [x] Create tRPC API endpoint for district-level GLUE-FIN data
+- [x] Add district data generation with realistic Thai district names
+- [x] Update GlueFinHeatmap with drill-down UI (click province → show districts)
+- [x] Add district detail panel with component scores
+- [x] Add back navigation from district view to province view
+- [x] Test drill-down functionality
+
+## Phase 24: Constituency Search - ค้นหาตามเขตเลือกตั้ง
+- [x] Create constituencyData.ts module (province → constituency → districts)
+- [x] Create tRPC endpoints: constituency.search, constituency.detail, constituency.provinces, constituency.provinceZones
+- [x] Create ConstituencySearch.tsx page with search/filter UI
+- [x] Add Yasothon Zone 1, 2, 3 data with real candidate info (9 candidates zone 2)
+- [x] Add constituency search to AdminLayout sidebar
+- [x] Add route in App.tsx (/admin/constituency)
+- [x] Write vitest tests for constituency module (20 tests passed)
+- [x] Province zone count for all 77 provinces
+- [x] GLUE-FIN Score per constituency
+- [x] Stats from 2566 election (registered voters, turnout, valid/invalid votes)
+- [x] Candidate vote history from 2566 (where available)
+
+## Phase 25: Tally Mark OCR - อ่านคะแนนแบบขีดจำนวน
+- [x] ปรับปรุง OCR prompt ให้รองรับการอ่านขีดคะแนน (Tally marks ||||)
+- [x] เพิ่มโหมด "ขีดคะแนน" ใน OCR Scanner (ส.ส.5/11 และ ส.ส.5/18)
+- [x] สร้างตัวอย่างภาพกระดานนับคะแนนแบบขีด (ยโสธร เขต 2)
+- [x] ทดสอบ OCR กับภาพจำลองยโสธร เขต 2
+- [x] เชื่อมต่อกับข้อมูลผู้สมัครยโสธร เขต 2
+- [x] Write vitest tests (16 tests passed)
+## Phase 25b: OCR รองรับ ส.ส.5/11 (ขีดคะแนน) และ ส.ส.5/18 (ตาราง)
+- [x] ปรับปรุง geminiOcr.ts เพิ่ม prompt สำหรับ ส.ส.5/11 (กระดานขีดคะแนน)
+- [x] ปรับปรุง geminiOcr.ts เพิ่ม prompt สำหรับ ส.ส.5/18 (แบบฟอร์มรายงานผล)
+- [x] เพิ่ม ocrMode parameter ใน batchProcessSingle router (ss5_11, ss5_18)
+- [x] เพิ่ม UI เลือกประเภทเอกสาร (ส.ส.5/11 / ส.ส.5/18 / Auto) พร้อมคำอธิบาย
+- [x] ทดสอบ UI แสดงผลถูกต้อง
+- [x] Write vitest tests (16 tests passed)
+
+## Phase 26: OCR Real Test + Cross-validation + เพิ่มผู้สมัครจังหวัดเป้าหมาย
+- [x] หาภาพจริง ส.ส.5/11 (กระดานขีดคะแนน) จากเลือกตั้งผู้ว่าฯ กทม. 2565
+- [x] หาภาพจริง ส.ส.5/18 (แบบรายงานผล) จากเลือกตั้ง 2566
+- [x] สร้างภาพจำลอง ส.ส.5/11 ยโสธร เขต 2 (5 หน่วย, 9 ผู้สมัคร)
+- [x] สร้าง Cross-validation module (crossValidate function in hfOcr.ts)
+- [x] เพิ่ม Cross-validation tRPC endpoint
+- [x] เพิ่ม Cross-validation toggle ใน BatchOcr UI
+- [x] โฟกัสเฉพาะยโสธร เขต 2 (ไม่เพิ่มจังหวัดอื่น)
+- [x] เขียน vitest tests สำหรับ cross-validation (19 tests)
+- [x] ทดสอบระบบทั้งหมด (143 tests ผ่านทั้งหมด)
+
+## Phase 26b: Hugging Face OCR + Cross-validation + เพิ่มจังหวัดเป้าหมาย
+- [x] ขอ HF Token จากผู้ใช้ (auto-matched from BYOK)
+- [x] สร้าง server/hfOcr.ts module (Qwen2-VL via Inference API + crossValidate)
+- [x] เพิ่ม HF OCR provider (hf-qwen) ใน routers.ts
+- [x] สร้าง Cross-validation module เปรียบเทียบ ส.ส.5/11 กับ ส.ส.5/18
+- [x] โฟกัสเฉพาะยโสธร เขต 2 (ตามที่ผู้ใช้ต้องการ)
+- [x] อัพเดท BatchOcr.tsx เพิ่ม HF provider + Cross-validation UI
+- [x] เขียน Vitest tests (19 tests in hfOcr.test.ts, 143 total passed)
+
+## Phase 27: Alert System + Real-time Dashboard + OCR Accuracy
+- [x] Alert System: DB table สำหรับเก็บ alerts (cross_validation_alerts)
+- [x] Alert System: tRPC endpoint สร้าง/อ่าน/อัพเดท alerts (alertSystem.getUnresolved, resolve, getStats)
+- [x] Alert System: แจ้งเตือนอัตโนมัติเมื่อ Cross-validation พบคะแนนไม่ตรง > 5%
+- [x] Alert System: แจ้งเตือนผ่าน notifyOwner
+- [x] Alert System: UI แสดง alerts ใน Admin Dashboard (AlertCenter.tsx)
+- [x] Real-time Dashboard: หน้าแสดงผลนับคะแนนยโสธร เขต 2 แบบ real-time (YasothonDashboard.tsx)
+- [x] Real-time Dashboard: แสดงสถานะหน่วยเลือกตั้ง (รายอำเภอ)
+- [x] Real-time Dashboard: กราฟคะแนนผู้สมัคร 9 คน แบบ live update
+- [x] Real-time Dashboard: สรุปผลรวมคะแนนเขต 2 (5 อำเภอ)
+- [x] Real-time Dashboard: auto-refresh ทุก 15 วินาที
+- [x] OCR Accuracy: ปรับปรุง prompt ให้แม่นยำขึ้น
+- [x] OCR Accuracy: เพิ่ม validation rules (ผลรวมคะแนน = บัตรดี)
+- [x] OCR Accuracy: เพิ่ม confidence score per candidate
+- [x] OCR Accuracy: double-check logic + confidence scoring
+- [x] Vitest tests สำหรับ Cross-validation (18 tests)
+- [x] Vitest tests สำหรับ OCR validation (16 tests)
+- [x] ทดสอบระบบทั้งหมด (161 tests ผ่านทั้งหมด)

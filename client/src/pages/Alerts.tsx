@@ -47,6 +47,8 @@ export default function Alerts() {
       case 'spatial_anomaly': return 'ความผิดปกติเชิงพื้นที่';
       case 'pvt_gap': return 'ความแตกต่าง PVT';
       case 'time_jump': return 'การกระโดดของข้อมูล';
+      case 'cross_validation': return 'Cross-validation ไม่ตรง';
+      case 'ocr_mismatch': return 'OCR คะแนนไม่ตรงกัน';
       default: return type;
     }
   };
@@ -260,7 +262,13 @@ export default function Alerts() {
               <div className="p-3 bg-slate-800/50 rounded-lg">
                 <div className="text-cyan-400 font-bold mb-1">Time Jump</div>
                 <div className="text-slate-400 text-sm">
-                  ตรวจพบเมื่อคะแนนกระโดด {">"} 10% ในเวลาสั้น
+                  ตรวจพบเมื่อคะแนนกระโดด {">"}  10% ในเวลาสั้น
+                </div>
+              </div>
+              <div className="p-3 bg-slate-800/50 rounded-lg">
+                <div className="text-pink-400 font-bold mb-1">Cross-validation</div>
+                <div className="text-slate-400 text-sm">
+                  ตรวจพบเมื่อ ส.ส.5/11 กับ ส.ส.5/18 จากหน่วยเดียวกันไม่ตรงกัน {">"}  5%
                 </div>
               </div>
             </div>

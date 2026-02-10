@@ -11,6 +11,8 @@ import {
   volunteers, InsertVolunteer, Volunteer,
   volunteerSubmissions, InsertVolunteerSubmission, VolunteerSubmission,
   volunteerCodes, InsertVolunteerCode, VolunteerCode,
+  ocrResults, InsertOcrResult, OcrResult,
+  crossValidationAlerts, InsertCrossValidationAlert, CrossValidationAlert,
   systemSettings
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -712,4 +714,127 @@ export async function getAllSettings(): Promise<Record<string, string>> {
     acc[row.key] = row.value ?? '';
     return acc;
   }, {} as Record<string, string>);
+}
+
+
+// ============ OCR RESULTS QUERIES ============
+
+export async function saveOcrResult(data: InsertOcrResult) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(ocrResults).values(data);
+  return { insertId: result[0].insertId };
+}
+
+export async function getOcrResultsByStation(stationCode: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocrResults)
+    .where(eq(ocrResults.stationCode, stationCode))
+    .orderBy(desc(ocrResults.createdAt));
+}
+
+export async function getOcrResultsByConstituency(province: string, constituency: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocrResults)
+    .where(and(
+      eq(ocrResults.province, province),
+      eq(ocrResults.constituency, constituency)
+    ))
+    .orderBy(desc(ocrResults.createdAt));
+}
+
+export async function getOcrResultById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const results = await db.select().from(ocrResults).where(eq(ocrResults.id, id)).limit(1);
+  return results[0] || null;
+}
+
+export async function getRecentOcrResults(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ocrResults).orderBy(desc(ocrResults.createdAt)).limit(limit);
+}
+
+export async function getOcrStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, ss511: 0, ss518: 0, avgConfidence: 0 };
+  const [total] = await db.select({ count: sql<number>`count(*)` }).from(ocrResults);
+  const [ss511] = await db.select({ count: sql<number>`count(*)` }).from(ocrResults).where(eq(ocrResults.documentType, 'ss5_11'));
+  const [ss518] = await db.select({ count: sql<number>`count(*)` }).from(ocrResults).where(eq(ocrResults.documentType, 'ss5_18'));
+  const [avgConf] = await db.select({ avg: sql<number>`COALESCE(AVG(confidence), 0)` }).from(ocrResults);
+  return {
+    total: total?.count || 0,
+    ss511: ss511?.count || 0,
+    ss518: ss518?.count || 0,
+    avgConfidence: Math.round(avgConf?.avg || 0),
+  };
+}
+
+// ============ CROSS-VALIDATION ALERT QUERIES ============
+
+export async function saveCrossValidationAlert(data: InsertCrossValidationAlert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(crossValidationAlerts).values(data);
+  return { insertId: result[0].insertId };
+}
+
+export async function getCrossValidationAlerts(filters?: {
+  province?: string;
+  constituency?: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  isResolved?: boolean;
+}, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  if (filters?.province) conditions.push(eq(crossValidationAlerts.province, filters.province));
+  if (filters?.constituency) conditions.push(eq(crossValidationAlerts.constituency, filters.constituency));
+  if (filters?.severity) conditions.push(eq(crossValidationAlerts.severity, filters.severity));
+  if (filters?.isResolved !== undefined) conditions.push(eq(crossValidationAlerts.isResolved, filters.isResolved));
+  
+  let query = db.select().from(crossValidationAlerts);
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+  return query.orderBy(desc(crossValidationAlerts.createdAt)).limit(limit);
+}
+
+export async function getUnresolvedCrossValidationAlerts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(crossValidationAlerts)
+    .where(eq(crossValidationAlerts.isResolved, false))
+    .orderBy(desc(crossValidationAlerts.createdAt));
+}
+
+export async function resolveCrossValidationAlert(id: number, resolvedBy: string, note?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(crossValidationAlerts).set({
+    isResolved: true,
+    resolvedBy,
+    resolvedAt: new Date(),
+    resolvedNote: note || null,
+  }).where(eq(crossValidationAlerts.id, id));
+}
+
+export async function getCrossValidationStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, matched: 0, mismatched: 0, unresolved: 0, critical: 0 };
+  const [total] = await db.select({ count: sql<number>`count(*)` }).from(crossValidationAlerts);
+  const [matched] = await db.select({ count: sql<number>`count(*)` }).from(crossValidationAlerts).where(eq(crossValidationAlerts.isMatch, true));
+  const [unresolved] = await db.select({ count: sql<number>`count(*)` }).from(crossValidationAlerts).where(eq(crossValidationAlerts.isResolved, false));
+  const [critical] = await db.select({ count: sql<number>`count(*)` }).from(crossValidationAlerts).where(and(eq(crossValidationAlerts.severity, 'critical'), eq(crossValidationAlerts.isResolved, false)));
+  return {
+    total: total?.count || 0,
+    matched: matched?.count || 0,
+    mismatched: (total?.count || 0) - (matched?.count || 0),
+    unresolved: unresolved?.count || 0,
+    critical: critical?.count || 0,
+  };
 }
