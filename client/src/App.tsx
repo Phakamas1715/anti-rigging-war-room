@@ -22,13 +22,9 @@ function Router() {
       <Route path={"/help"} component={Help} />
       <Route path={"/dashboard"} component={YasothonDashboard} />
       <Route path={"/alerts"} component={AlertCenter} />
-      
-      {/* Volunteer Routes */}
       <Route path={"/volunteer"} component={VolunteerMobileApp} />
-      <Route path={"/volunteer/app"} component={VolunteerMobileApp} />
-      <Route path={"/volunteer/submit"} component={VolunteerMobileApp} />
-      <Route path={"/volunteer/history"} component={VolunteerMobileApp} />
-      <Route path={"/volunteer/help"} component={Help} />
+      <Route path={"/submit"} component={VolunteerMobileApp} />
+      <Route path={"/history"} component={VolunteerMobileApp} />
       
       {/* 404 */}
       <Route path={"/404"} component={NotFound} />

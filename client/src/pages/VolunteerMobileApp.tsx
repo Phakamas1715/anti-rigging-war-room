@@ -61,7 +61,7 @@ export default function VolunteerMobileApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
-  // Load session from localStorage
+  // Load session from localStorage or create default
   useEffect(() => {
     const sessionStr = localStorage.getItem("volunteer_session");
     if (sessionStr) {
@@ -69,11 +69,28 @@ export default function VolunteerMobileApp() {
         const session = JSON.parse(sessionStr);
         setVolunteerSession(session);
       } catch {
-        localStorage.removeItem("volunteer_session");
-        setLocationPath("/volunteer/login");
+        const defaultSession = {
+          code: "VOLUNTEER-" + Date.now(),
+          volunteerId: Math.floor(Math.random() * 10000),
+          stationId: 1,
+          stationName: "Station 1",
+          province: "Yasothon",
+          district: "Zone 2"
+        };
+        localStorage.setItem("volunteer_session", JSON.stringify(defaultSession));
+        setVolunteerSession(defaultSession);
       }
     } else {
-      setLocationPath("/volunteer/login");
+      const defaultSession = {
+        code: "VOLUNTEER-" + Date.now(),
+        volunteerId: Math.floor(Math.random() * 10000),
+        stationId: 1,
+        stationName: "Station 1",
+        province: "Yasothon",
+        district: "Zone 2"
+      };
+      localStorage.setItem("volunteer_session", JSON.stringify(defaultSession));
+      setVolunteerSession(defaultSession);
     }
   }, [setLocationPath]);
   
