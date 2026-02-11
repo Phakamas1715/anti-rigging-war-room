@@ -13,6 +13,7 @@ import {
   History, Loader2, HelpCircle, LogOut, Home,
   ChevronLeft, ChevronRight
 } from "lucide-react";
+import { addTimestampToImage, getCurrentTimestamp } from "@/lib/imageTimestamp";
 
 type TabId = "submit" | "history" | "help";
 
@@ -149,17 +150,35 @@ export default function VolunteerMobileApp() {
     }
   };
   
-  const handlePhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setPhotoPreview(result);
-      const base64 = result.split(",")[1];
-      setPhotoBase64(base64);
-      setPhotoMimeType(file.type);
+    reader.onloadend = async () => {
+      try {
+        const result = reader.result as string;
+        
+        // Add timestamp to image
+        const timestampedImage = await addTimestampToImage(result, {
+          fontSize: 20,
+          fontColor: '#FFFFFF',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 8,
+          position: 'bottom-right',
+          format: 'full'
+        });
+        
+        setPhotoPreview(timestampedImage);
+        const base64 = timestampedImage.split(",")[1];
+        setPhotoBase64(base64);
+        setPhotoMimeType('image/jpeg');
+        
+        toast.success(`ภาพถูกประทับเวลา: ${getCurrentTimestamp('full')}`);
+      } catch (error) {
+        console.error('Failed to add timestamp:', error);
+        toast.error('ไม่สามารถประทับเวลาบนภาพได้');
+      }
     };
     reader.readAsDataURL(file);
   };
