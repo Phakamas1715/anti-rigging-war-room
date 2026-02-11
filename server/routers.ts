@@ -2407,6 +2407,82 @@ export const appRouter = router({
         .sort((a, b) => b.totalStations - a.totalStations);
     }),
   }),
+  // ============ YASOTHON DISTRICT 2 LIVE MONITORING ============
+  yasothon: router({
+    liveMonitor: publicProcedure.query(async () => {
+      const results = await getOcrResultsByConstituency('ยโสธร', '2');
+      const candidateVotes: Record<number, number> = {};
+      for (let i = 1; i <= 9; i++) candidateVotes[i] = 0;
+      results.forEach(result => {
+        const votes = (result.votesData as any[]) || [];
+        votes.forEach(vote => {
+          candidateVotes[vote.candidateNumber] = (candidateVotes[vote.candidateNumber] || 0) + vote.voteCount;
+        });
+      });
+      return { candidateVotes };
+    }),
+  }),
+
+  // ============ REAL-TIME DASHBOARD ============
+  realtimeDashboard: router({
+    getLiveData: publicProcedure.query(async () => {
+      const results = await getOcrResultsByConstituency('ยโสธร', '2');
+      const candidateVotes: Record<number, number> = {};
+      for (let i = 1; i <= 9; i++) candidateVotes[i] = 0;
+      results.forEach(result => {
+        const votes = (result.votesData as any[]) || [];
+        votes.forEach(vote => {
+          candidateVotes[vote.candidateNumber] = (candidateVotes[vote.candidateNumber] || 0) + vote.voteCount;
+        });
+      });
+      return { candidateVotes, totalStations: results.length };
+    }),
+  }),
+
+  // ============ ALERT SYSTEM ============
+  alertSystem: router({
+    // Get cross-validation alerts with filters
+    getAlerts: publicProcedure
+      .input(z.object({
+        province: z.string().optional(),
+        constituency: z.string().optional(),
+        severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        isResolved: z.boolean().optional(),
+        limit: z.number().min(1).max(200).default(50),
+      }).optional())
+      .query(async ({ input }) => {
+        return getCrossValidationAlerts(input ? {
+          province: input.province,
+          constituency: input.constituency,
+          severity: input.severity,
+          isResolved: input.isResolved,
+        } : undefined, input?.limit || 50);
+      }),
+
+    // Get unresolved alerts only
+    getUnresolved: publicProcedure.query(async () => {
+      return getUnresolvedCrossValidationAlerts();
+    }),
+
+    // Get alert statistics
+    getStats: publicProcedure.query(async () => {
+      const cvStats = await getCrossValidationStats();
+      const ocrStats = await getOcrStats();
+      return { crossValidation: cvStats, ocr: ocrStats };
+    }),
+
+    // Resolve an alert
+    resolve: publicProcedure
+      .input(z.object({
+        alertId: z.number(),
+        note: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await resolveCrossValidationAlert(input.alertId, 'public-user', input.note);
+        return { success: true };
+      }),
+  }),
+
   settings: settingsRouter,
 });
 
